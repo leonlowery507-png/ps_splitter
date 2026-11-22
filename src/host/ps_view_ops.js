@@ -13,7 +13,6 @@
   var PSSplitter = rootScope.PSSplitter;
 
   var INSPECT_BG_LAYER_NAME = "【视图检视底色_辅助】";
-  var RADAR_LAYER_NAME = "【漏拆高亮雷达_检查完即删】";
   var ARC_GUIDE_LAYER_NAME = "【关节旋转参考环_辅助】";
 
   function getAM() {
@@ -45,7 +44,7 @@
       return true;
     }
     var n = String(layer.name || "");
-    if (n === INSPECT_BG_LAYER_NAME || n === RADAR_LAYER_NAME || n === ARC_GUIDE_LAYER_NAME) {
+    if (n === INSPECT_BG_LAYER_NAME || n === ARC_GUIDE_LAYER_NAME) {
       return true;
     }
     return false;

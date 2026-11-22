@@ -46,8 +46,8 @@
       </div>
     </header>
 
-    <!-- ==================== 2. 置顶三联仪器指令条 ==================== -->
-    <div class="cmd-strip" role="toolbar" aria-label="原稿与漏拆快捷控制">
+    <!-- ==================== 2. 置顶原稿护盾指令条 ==================== -->
+    <div class="cmd-strip" role="toolbar" aria-label="原稿快捷控制">
       <button type="button" class="cmd-key cmd-key--backup" id="btnBackup" data-ui-action="initWorkspace" data-ripple="true" title="将当前完整原画备份至底部隐藏锁定组">
         <svg class="cmd-ic c-emerald" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M12 21.5s7.5-3.6 7.5-9.5V5.4L12 2.5 4.5 5.4V12c0 5.9 7.5 9.5 7.5 9.5z" fill="currentColor" fill-opacity="0.12" />
@@ -55,28 +55,6 @@
         </svg>
         <span class="cmd-key-label" id="txtBackupState">备份原稿</span>
         <span class="cmd-led" aria-hidden="true"></span>
-      </button>
-
-      <button type="button" class="cmd-key cmd-key--radar" id="btnRadarScan" data-ui-action="runUnsplitRadar" data-arg="1" data-ripple="true" title="对比原稿与所有已拆图层，用红色高亮标出漏拆区域">
-        <svg class="cmd-ic c-coral" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="9.25" stroke-opacity="0.45" />
-          <circle cx="12" cy="12" r="5.25" stroke-opacity="0.3" />
-          <path class="radar-sweep" d="M12 12 L12 3 A9 9 0 0 1 19.8 7.5 Z" fill="currentColor" fill-opacity="0.32" stroke="currentColor" stroke-width="1.4" />
-          <circle class="radar-core" cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
-          <line x1="12" y1="1.8" x2="12" y2="3.8" />
-          <line x1="12" y1="20.2" x2="12" y2="22.2" />
-          <line x1="1.8" y1="12" x2="3.8" y2="12" />
-          <line x1="20.2" y1="12" x2="22.2" y2="12" />
-        </svg>
-        <span class="cmd-key-label">漏拆检测高亮</span>
-      </button>
-
-      <button type="button" class="cmd-key cmd-key--icon" id="btnClearRadar" data-ui-action="clearUnsplitRadar" data-ripple="true" title="清除顶层的红色漏拆高亮层" aria-label="清除漏拆高亮">
-        <svg class="cmd-ic c-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M7.5 20.5L3.3 16.3a2.2 2.2 0 0 1 0-3.1l8.9-8.9a2.2 2.2 0 0 1 3.1 0l5.4 5.4a2.2 2.2 0 0 1 0 3.1l-7.7 7.7z" fill="currentColor" fill-opacity="0.1" />
-          <line x1="21" y1="20.5" x2="7.5" y2="20.5" />
-          <line x1="6.4" y1="10.2" x2="14.6" y2="18.4" />
-        </svg>
       </button>
     </div>
 
@@ -648,7 +626,7 @@
     <!-- ==================== 5. 底部凹陷精密状态岛 ==================== -->
     <footer class="status-island" id="logBox" role="status" aria-live="polite">
       <span class="island-dot" id="islandDot" aria-hidden="true"></span>
-      <span class="island-text" id="logText">就绪 · 先点「备份原稿」，即可随时检测漏拆或执行拆补</span>
+      <span class="island-text" id="logText">就绪 · 先点「备份原稿」，即可安全开始拆图与补底</span>
     </footer>
 
   </div>

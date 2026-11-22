@@ -1,13 +1,12 @@
 ﻿/**
  * @fileoverview Photoshop 核心「拆」与「补」实战操作模块（PSSplitter.Host.SplitJointOps）
  * 深度聚焦 Photoshop 内角色拆图与被遮挡区/关节断口补图核心痛点：
- *  1. 漏拆像素雷达检测（原稿 vs 已拆图层选区布尔差集 + 荧光红高亮雷达层）
- *  2. 拆出并原位挖空留待补咬合选区（拆+补无缝衔接）
- *  3. 跨多层 / 复合剪贴蒙版链同选区一键拆出
- *  4. 真正 100% 肉眼见效的轮廓内缩削毛边（选区内缩 + 羽化 + 反选削边）
- *  5. 遮挡缺口咬合封口补底 & 一键新建补画夹层
- *  6. 5 方向（上/下/左/右/全向）关节断口定向像素延展补底 & 关节旋转参考圆环
- *  7. 原稿基准快照 & 局部选区无损后悔药恢复
+ *  1. 拆出并原位挖空留待补咬合选区（拆+补无缝衔接）
+ *  2. 跨多层 / 复合剪贴蒙版链同选区一键拆出
+ *  3. 真正 100% 肉眼见效的轮廓内缩削毛边（选区内缩 + 羽化 + 反选削边）
+ *  4. 遮挡缺口咬合封口补底 & 一键新建补画夹层
+ *  5. 5 方向（上/下/左/右/全向）关节断口定向像素延展补底 & 关节旋转参考圆环
+ *  6. 原稿基准快照 & 局部选区无损后悔药恢复
  */
 
 (function () {
@@ -18,7 +17,6 @@
   rootScope.PSSplitter.Host = rootScope.PSSplitter.Host || {};
   var PSSplitter = rootScope.PSSplitter;
 
-  var RADAR_LAYER_NAME = "【漏拆高亮雷达_检查完即删】";
   var ARC_GUIDE_LAYER_NAME = "【关节旋转参考环_辅助】";
   var INSPECT_BG_LAYER_NAME = "【视图检视底色_辅助】";
 
@@ -168,38 +166,6 @@
   }
 
   /**
-   * 辅助：将指定 layerId 的不透明像素从当前选区中减去（ActionManager Sbtr）
-   */
-  function subtractLayerIdTransparencyFromSelection(layerId) {
-    var AM = getAM();
-    var desc = new ActionDescriptor();
-    var refTrsp = new ActionReference();
-    refTrsp.putEnumerated(AM.c2t("Chnl"), AM.c2t("Chnl"), AM.c2t("Trsp"));
-    refTrsp.putIdentifier(AM.c2t("Lyr "), layerId);
-    desc.putReference(AM.c2t("null"), refTrsp);
-    var refSel = new ActionReference();
-    refSel.putProperty(AM.c2t("Chnl"), AM.c2t("fsel"));
-    desc.putReference(AM.c2t("From"), refSel);
-    executeAction(AM.c2t("Sbtr"), desc, DialogModes.NO);
-  }
-
-  /**
-   * 辅助：载入指定 layerId 的不透明通道为当前选区
-   */
-  function loadLayerIdTransparencyAsSelection(layerId) {
-    var AM = getAM();
-    var desc = new ActionDescriptor();
-    var refSel = new ActionReference();
-    refSel.putProperty(AM.c2t("Chnl"), AM.c2t("fsel"));
-    desc.putReference(AM.c2t("null"), refSel);
-    var refTrsp = new ActionReference();
-    refTrsp.putEnumerated(AM.c2t("Chnl"), AM.c2t("Chnl"), AM.c2t("Trsp"));
-    refTrsp.putIdentifier(AM.c2t("Lyr "), layerId);
-    desc.putReference(AM.c2t("T   "), refTrsp);
-    executeAction(AM.c2t("setd"), desc, DialogModes.NO);
-  }
-
-  /**
    * 辅助：使用 ActionManager 按指定 RGB 颜色填充当前选区（不污染画师前景色）
    */
   function fillSelectionRgb(doc, r, g, b) {
@@ -222,191 +188,7 @@
   }
 
   // ===========================================================================
-  // 1. 漏拆像素雷达检测（对比原稿基准 vs 全部已拆图层）
-  // ===========================================================================
-
-  /**
-   * 查找文档中的原稿基准层（优先从 SRC_BACKUP [ignore] 中取最新备份层）
-   */
-  function findOriginalReferenceLayer(doc) {
-    var Safety = getSafety();
-    var bakGroup = Safety.findTopLevelGroup(doc, Safety.BACKUP_GROUP_NAME);
-    if (bakGroup && bakGroup.layers && bakGroup.layers.length > 0) {
-      var i;
-      for (i = 0; i < bakGroup.layers.length; i++) {
-        if (!Safety.isLayerSet(bakGroup.layers[i])) {
-          return { layer: bakGroup.layers[i], group: bakGroup, isFromBackup: true };
-        }
-      }
-    }
-    return null;
-  }
-
-  /**
-   * 一键清理顶部的漏拆高亮雷达检查层
-   */
-  function clearUnsplitRadar() {
-    var Safety = getSafety();
-    var doc = Safety.ensureActiveDocument();
-    return Safety.runTransaction(doc, "SpineSplitter: 清除漏拆雷达层", function () {
-      var removed = 0;
-      var i;
-      for (i = doc.layers.length - 1; i >= 0; i--) {
-        if (String(doc.layers[i].name) === RADAR_LAYER_NAME) {
-          doc.layers[i].allLocked = false;
-          doc.layers[i].remove();
-          removed++;
-        }
-      }
-      return {
-        ok: true,
-        removedCount: removed,
-        message: removed > 0 ? "已清除漏拆高亮雷达检查层。" : "当前没有开启中的漏拆雷达检查层。"
-      };
-    });
-  }
-
-  /**
-   * 漏拆像素雷达检测：对比原稿快照与所有已拆可见图层，自动生成荧光红高亮层标出尚未拆出的遗漏像素
-   */
-  function runUnsplitRadar(options) {
-    var AM = getAM();
-    var Safety = getSafety();
-    var doc = Safety.ensureActiveDocument();
-    var opts = options || {};
-
-    var refInfo = findOriginalReferenceLayer(doc);
-    if (!refInfo) {
-      return {
-        ok: false,
-        hasUnsplit: false,
-        message: "尚未建立原稿基准快照：请先选中完整原画图层，点击上方「锁定原稿基准快照」，拆图过程中即可随时扫描漏拆区域！"
-      };
-    }
-
-    return Safety.runTransaction(doc, "SpineSplitter: 扫描漏拆像素雷达", function () {
-      // 1. 先清理旧的雷达层
-      var i;
-      for (i = doc.layers.length - 1; i >= 0; i--) {
-        if (String(doc.layers[i].name) === RADAR_LAYER_NAME || String(doc.layers[i].name) === ARC_GUIDE_LAYER_NAME) {
-          try {
-            doc.layers[i].allLocked = false;
-            doc.layers[i].remove();
-          } catch (eRmOld) {}
-        }
-      }
-
-      // 2. 收集所有已拆分的普通工作图层（排除 SRC_BACKUP、__REF__ 以及当前原画底稿层自身）
-      var splitLayers = [];
-      function collectWorkLayers(container) {
-        var k;
-        for (k = 0; k < container.layers.length; k++) {
-          var lyr = container.layers[k];
-          if (Safety.isInsideGroupByName(lyr, Safety.BACKUP_GROUP_NAME) ||
-              Safety.isInsideGroupByName(lyr, Safety.REF_GROUP_NAME)) {
-            continue;
-          }
-          if (String(lyr.name) === RADAR_LAYER_NAME ||
-              String(lyr.name) === ARC_GUIDE_LAYER_NAME ||
-              String(lyr.name) === INSPECT_BG_LAYER_NAME) {
-            continue;
-          }
-          if (Safety.isLayerSet(lyr)) {
-            if (lyr.visible !== false) {
-              collectWorkLayers(lyr);
-            }
-          } else if (lyr.visible !== false && !AM.isLayerEmpty(lyr)) {
-            splitLayers.push(lyr);
-          }
-        }
-      }
-      collectWorkLayers(doc);
-
-      if (splitLayers.length === 0) {
-        return {
-          ok: false,
-          hasUnsplit: true,
-          message: "当前工作区尚未检测到任何已拆出的可见部件图层。"
-        };
-      }
-
-      // 3. 载入原稿基准层的不透明像素作为初始总选区
-      var baseLayer = refInfo.layer;
-      try {
-        loadLayerIdTransparencyAsSelection(baseLayer.id);
-      } catch (eLoadBase) {
-        var prevGVis = refInfo.group.visible;
-        var prevGLock = refInfo.group.allLocked;
-        refInfo.group.allLocked = false;
-        refInfo.group.visible = true;
-        doc.activeLayer = baseLayer;
-        AM.loadLayerTransparencyAsSelection();
-        refInfo.group.visible = prevGVis;
-        refInfo.group.allLocked = prevGLock;
-      }
-
-      // 4. 逐层减去所有已拆出图层的非透明像素区域
-      var s;
-      for (s = 0; s < splitLayers.length; s++) {
-        try {
-          subtractLayerIdTransparencyFromSelection(splitLayers[s].id);
-        } catch (eSub) {}
-      }
-
-      // 5. 若收缩 1px 过滤掉抗锯齿极细亚像素边缘后仍有选区，说明存在真实漏拆部位！
-      var filterEdgePx = typeof opts.filterEdgePx === "number" ? opts.filterEdgePx : 1;
-      if (filterEdgePx > 0 && AM.hasSelection(doc)) {
-        try {
-          AM.contractSelection(doc, filterEdgePx);
-        } catch (eCon) {}
-      }
-
-      if (!AM.hasSelection(doc)) {
-        AM.deselect(doc);
-        return {
-          ok: true,
-          hasUnsplit: false,
-          splitCount: splitLayers.length,
-          message: "太棒了！已对比原稿与 " + String(splitLayers.length) + " 个已拆图层，未发现任何漏拆像素区域（100% 拆解完毕）。"
-        };
-      }
-
-      // 6. 将漏拆选区向外扩回 2px 使其更醒目，并在最顶层创建荧光洋红高亮提示层
-      try {
-        AM.expandSelection(doc, filterEdgePx + 2);
-      } catch (eExp) {}
-
-      var unsplitBounds = AM.getSelectionBounds(doc);
-      var radarLayer = doc.artLayers.add();
-      radarLayer.name = RADAR_LAYER_NAME;
-      if (doc.layers.length > 1 && typeof ElementPlacement !== "undefined") {
-        try {
-          radarLayer.move(doc.layers[0], ElementPlacement.PLACEBEFORE);
-        } catch (eMvTop) {}
-      }
-      doc.activeLayer = radarLayer;
-      fillSelectionRgb(doc, 255, 38, 102);
-      radarLayer.opacity = 82;
-      try {
-        AM.setLayerColorLabel("Rd  ");
-      } catch (eLbl) {}
-
-      var boxInfo = unsplitBounds
-        ? ("（漏拆范围约 " + String(Math.round(unsplitBounds[2] - unsplitBounds[0])) + "x" + String(Math.round(unsplitBounds[3] - unsplitBounds[1])) + " px）")
-        : "";
-
-      return {
-        ok: true,
-        hasUnsplit: true,
-        splitCount: splitLayers.length,
-        bounds: unsplitBounds,
-        message: "检测到尚未拆出的遗漏像素区域" + boxInfo + "！已在顶层生成红色高亮层「" + RADAR_LAYER_NAME + "」并保留选区。"
-      };
-    });
-  }
-
-  // ===========================================================================
-  // 2. 「拆 + 补」一体动作：拆出部件并原位挖空留待补咬合选区
+  // 1. 「拆 + 补」一体动作：拆出部件并原位挖空留待补咬合选区
   // ===========================================================================
 
   /**
@@ -1865,10 +1647,7 @@
   }
 
   PSSplitter.Host.SplitJointOps = {
-    RADAR_LAYER_NAME: RADAR_LAYER_NAME,
     ARC_GUIDE_LAYER_NAME: ARC_GUIDE_LAYER_NAME,
-    runUnsplitRadar: runUnsplitRadar,
-    clearUnsplitRadar: clearUnsplitRadar,
     splitAndPreparePatch: splitAndPreparePatch,
     splitMultiSelectedLayers: splitMultiSelectedLayers,
     shaveLayerEdge: shaveLayerEdge,

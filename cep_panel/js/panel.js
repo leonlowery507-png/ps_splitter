@@ -654,16 +654,6 @@
     }
 
     /**
-     * 同步漏拆雷达巡检状态 (#btnRadarScan.is-radar-active)
-     */
-    function setRadarActive(active) {
-      var btn = byId("btnRadarScan");
-      if (btn) {
-        toggleClass(btn, "is-radar-active", !!active);
-      }
-    }
-
-    /**
      * 根据宿主返回数据或文案准确同步旋转参考环激活态 (#btnArcGuide.is-active)
      */
     function syncArcGuideState(res) {
@@ -739,7 +729,6 @@
       spinRefreshButton: spinRefreshButton,
       setLog: setLog,
       syncBackupState: syncBackupState,
-      setRadarActive: setRadarActive,
       syncArcGuideState: syncArcGuideState,
       setIsolateActive: setIsolateActive,
       setBackupCompareActive: setBackupCompareActive,
@@ -1064,7 +1053,6 @@
       hasBackup: false,
       workArtLayers: 14,
       groupCount: 3,
-      radarActive: false,
       arcGuideActive: false,
       isolateActive: false,
       compareActive: false,
@@ -1105,27 +1093,6 @@
           ok: true,
           backupCreated: false,
           message: "原稿基准快照已存在，已重新校验保护锁。"
-        };
-      }
-
-      if (action === "runUnsplitRadar") {
-        mockState.radarActive = true;
-        mockState.hasSelection = true;
-        return {
-          ok: true,
-          hasUnsplit: true,
-          splitCount: mockState.workArtLayers,
-          message: "检测到遗漏像素区域（约 46x32 px），已在顶层生成雷达高亮层并保留选区。"
-        };
-      }
-
-      if (action === "clearUnsplitRadar") {
-        var wasActive = mockState.radarActive;
-        mockState.radarActive = false;
-        return {
-          ok: true,
-          removed: wasActive ? 1 : 0,
-          message: wasActive ? "已清除漏拆高亮雷达检查层。" : "当前没有开启中的漏拆雷达检查层。"
         };
       }
 
@@ -1354,8 +1321,6 @@
 
   var PENDING_LABELS = {
     initWorkspace: "正在锁定原稿基准快照…",
-    runUnsplitRadar: "正在扫描漏拆像素区域…",
-    clearUnsplitRadar: "正在清除雷达高亮层…",
     splitAndPreparePatch: "正在拆出部件并留待补选区…",
     splitMultiLayers: "正在跨多层合并同拆…",
     splitClipChain: "正在按剪贴链结构同拆…",
@@ -1477,8 +1442,6 @@
   function resolveTriggerByAction(action, arg) {
     if (action === "refreshContext") return byId("btnRefreshTop");
     if (action === "initWorkspace") return byId("btnBackup");
-    if (action === "runUnsplitRadar") return byId("btnRadarScan");
-    if (action === "clearUnsplitRadar") return byId("btnClearRadar");
     if (action === "splitAndPreparePatch") return byId("btnSplitPatch");
     if (action === "splitMultiLayers") return byId("btnMultiSplit");
     if (action === "splitClipChain") return byId("btnClipSplit");
@@ -1515,11 +1478,6 @@
 
     if (action === "initWorkspace" && res.backupCreated) {
       MotionFX.syncBackupState(true, true);
-    } else if (action === "runUnsplitRadar") {
-      /* 仅当未明确声明 hasUnsplit === false 时激活巡检扫描动画 */
-      MotionFX.setRadarActive(res.hasUnsplit !== false);
-    } else if (action === "clearUnsplitRadar") {
-      MotionFX.setRadarActive(false);
     } else if (action === "toggleJointArcGuide") {
       MotionFX.syncArcGuideState(res);
     } else if (action === "toggleIsolateSelected") {
@@ -1582,14 +1540,6 @@
     }
     if (uiAction === "initWorkspace") {
       executeHostAction("initWorkspace", "", "", "", "", "", triggerEl);
-      return;
-    }
-    if (uiAction === "runUnsplitRadar") {
-      executeHostAction("runUnsplitRadar", arg || "1", "", "", "", "", triggerEl);
-      return;
-    }
-    if (uiAction === "clearUnsplitRadar") {
-      executeHostAction("clearUnsplitRadar", "", "", "", "", "", triggerEl);
       return;
     }
     if (uiAction === "splitAndPreparePatch") {
@@ -1717,14 +1667,6 @@
 
   window.runLockOriginal = function () {
     dispatchUiAction("initWorkspace", "", byId("btnBackup"));
-  };
-
-  window.runUnsplitRadarScan = function () {
-    dispatchUiAction("runUnsplitRadar", "1", byId("btnRadarScan"));
-  };
-
-  window.runClearRadar = function () {
-    dispatchUiAction("clearUnsplitRadar", "", byId("btnClearRadar"));
   };
 
   window.runSplitAndPreparePatch = function () {

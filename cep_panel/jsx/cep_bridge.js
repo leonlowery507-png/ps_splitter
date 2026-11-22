@@ -145,19 +145,7 @@
         }));
       }
 
-      // 2. 漏拆像素雷达检测 & 清除高亮雷达层
-      if (action === "runUnsplitRadar") {
-        var filterPx = parseInt(a1 || "1", 10);
-        return P.jsonStringify(SplitOps.runUnsplitRadar({
-          filterEdgePx: isNaN(filterPx) ? 1 : filterPx
-        }));
-      }
-
-      if (action === "clearUnsplitRadar") {
-        return P.jsonStringify(SplitOps.clearUnsplitRadar());
-      }
-
-      // 3. 拆+补一体动作：拆出部件并原位挖空留待补咬合选区
+      // 2. 拆+补一体动作：拆出部件并原位挖空留待补咬合选区
       if (action === "splitAndPreparePatch") {
         var ovPx = parseInt(a1 || "2", 10);
         return P.jsonStringify(SplitOps.splitAndPreparePatch({
