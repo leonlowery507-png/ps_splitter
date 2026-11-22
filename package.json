@@ -1,6 +1,6 @@
 {
   "name": "ps_splitter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Spine 2D Photoshop pre-export layer splitting assistant (ExtendScript ES3)",
   "type": "commonjs",

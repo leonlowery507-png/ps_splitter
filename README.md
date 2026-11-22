@@ -39,7 +39,7 @@
 
 ## 二、Windows 一键安装（Photoshop 2020 ~ 2025）
 
-1. 前往右侧 **[Releases](https://github.com/leonlowery507-png/ps_splitter/releases)** 下载最新版压缩包 `PS_Splitter_v1.0.0.zip` 并解压；
+1. 前往右侧 **[Releases](https://github.com/leonlowery507-png/ps_splitter/releases)** 下载最新版压缩包 `PS_Splitter_v1.0.1.zip` 并解压；
 2. 解压目录内**安装程序与精简说明同在根目录**：直接双击 **`一键安装_PS_Splitter.bat`**（详细精简说明见同目录 **`使用与安装说明.txt`**；若系统拦截 `Program Files` 写入，右键选择「以管理员身份运行」）：
    - 自动构建并安装可停靠 CEP 面板至 `%APPDATA%\Adobe\CEP\extensions\com.spinesplitter.panel`；
    - 自动写入注册表 `HKCU\Software\Adobe\CSXS.7~12` 的 `PlayerDebugMode=1`（确保面板正常加载）；
