@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>拆补助手</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <!-- 暗房微颗粒机身材质层 -->
+  <div class="chassis-grain" aria-hidden="true"></div>
+
+  <div class="panel-shell">
+
+    <!-- ==================== 1. 精密顶部状态栏 ==================== -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6.5" cy="6.5" r="2.75" fill="currentColor" fill-opacity="0.14" />
+            <circle cx="6.5" cy="17.5" r="2.75" fill="currentColor" fill-opacity="0.14" />
+            <line x1="20" y1="4.5" x2="8.5" y2="15.5" />
+            <line x1="14.2" y1="14.2" x2="20" y2="19.5" />
+            <line x1="8.6" y1="8.4" x2="11.8" y2="11.5" />
+          </svg>
+        </div>
+        <div class="brand-meta">
+          <span class="brand-text">拆补助手</span>
+          <span class="brand-tag">PRO</span>
+        </div>
+      </div>
+
+      <div class="status-cluster">
+        <div class="ctx-chip" id="ctxChip" title="当前图层与选区状态">
+          <span class="led-dot" id="selDot" aria-hidden="true"></span>
+          <span class="ctx-layer" id="lblActiveLayer">未连接</span>
+          <span class="ctx-count is-hidden" id="lblLayerCount"></span>
+        </div>
+        <button type="button" class="mini-refresh" id="btnRefreshTop" data-ui-action="refreshContext" data-ripple="true" title="刷新文档与图层状态" aria-label="刷新状态">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20.5 4v5.5H15" />
+            <path d="M3.5 12a8.5 8.5 0 0 1 14.3-6.2L20.5 9.5" />
+            <path d="M3.5 20v-5.5H9" />
+            <path d="M20.5 12a8.5 8.5 0 0 1-14.3 6.2L3.5 14.5" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================== 2. 置顶三联仪器指令条 ==================== -->
+    <div class="cmd-strip" role="toolbar" aria-label="原稿与漏拆快捷控制">
+      <button type="button" class="cmd-key cmd-key--backup" id="btnBackup" data-ui-action="initWorkspace" data-ripple="true" title="将当前完整原画备份至底部隐藏锁定组">
+        <svg class="cmd-ic c-emerald" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 21.5s7.5-3.6 7.5-9.5V5.4L12 2.5 4.5 5.4V12c0 5.9 7.5 9.5 7.5 9.5z" fill="currentColor" fill-opacity="0.12" />
+          <path class="shield-check" d="M9.2 12.2l2 2 3.8-4.2" />
+        </svg>
+        <span class="cmd-key-label" id="txtBackupState">备份原稿</span>
+        <span class="cmd-led" aria-hidden="true"></span>
+      </button>
+
+      <button type="button" class="cmd-key cmd-key--radar" id="btnRadarScan" data-ui-action="runUnsplitRadar" data-arg="1" data-ripple="true" title="对比原稿与所有已拆图层，用红色高亮标出漏拆区域">
+        <svg class="cmd-ic c-coral" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.25" stroke-opacity="0.45" />
+          <circle cx="12" cy="12" r="5.25" stroke-opacity="0.3" />
+          <path class="radar-sweep" d="M12 12 L12 3 A9 9 0 0 1 19.8 7.5 Z" fill="currentColor" fill-opacity="0.32" stroke="currentColor" stroke-width="1.4" />
+          <circle class="radar-core" cx="12" cy="12" r="1.8" fill="currentColor" stroke="none" />
+          <line x1="12" y1="1.8" x2="12" y2="3.8" />
+          <line x1="12" y1="20.2" x2="12" y2="22.2" />
+          <line x1="1.8" y1="12" x2="3.8" y2="12" />
+          <line x1="20.2" y1="12" x2="22.2" y2="12" />
+        </svg>
+        <span class="cmd-key-label">漏拆检测高亮</span>
+      </button>
+
+      <button type="button" class="cmd-key cmd-key--icon" id="btnClearRadar" data-ui-action="clearUnsplitRadar" data-ripple="true" title="清除顶层的红色漏拆高亮层" aria-label="清除漏拆高亮">
+        <svg class="cmd-ic c-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M7.5 20.5L3.3 16.3a2.2 2.2 0 0 1 0-3.1l8.9-8.9a2.2 2.2 0 0 1 3.1 0l5.4 5.4a2.2 2.2 0 0 1 0 3.1l-7.7 7.7z" fill="currentColor" fill-opacity="0.1" />
+          <line x1="21" y1="20.5" x2="7.5" y2="20.5" />
+          <line x1="6.4" y1="10.2" x2="14.6" y2="18.4" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- ==================== 3. 凹陷式精密分段页签 ==================== -->
+    <nav class="nav-track" id="modeTrack" data-active-tab="0" role="tablist" aria-label="主功能页签">
+      <div class="nav-thumb" id="modeGlider" aria-hidden="true"></div>
+      <button type="button" class="nav-item is-active" role="tab" aria-selected="true" aria-controls="pane0" data-tab-target="0">
+        <svg class="nav-ic c-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="6.5" cy="6.5" r="2.75" />
+          <circle cx="6.5" cy="17.5" r="2.75" />
+          <line x1="19.5" y1="4.5" x2="8.5" y2="15.5" />
+          <line x1="14.3" y1="14.3" x2="19.5" y2="19.5" />
+        </svg>
+        <span>拆图与修边</span>
+      </button>
+      <button type="button" class="nav-item" role="tab" aria-selected="false" aria-controls="pane1" data-tab-target="1">
+        <svg class="nav-ic c-violet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3l1.8 5.4a2.2 2.2 0 0 0 1.4 1.4L20.6 11.6l-5.4 1.8a2.2 2.2 0 0 0-1.4 1.4L12 20.2l-1.8-5.4a2.2 2.2 0 0 0-1.4-1.4L3.4 11.6l5.4-1.8a2.2 2.2 0 0 0 1.4-1.4z" fill="currentColor" fill-opacity="0.14" />
+        </svg>
+        <span>补底与关节</span>
+      </button>
+    </nav>
+
+    <!-- ==================== 4. 双视图方向过渡舞台 ==================== -->
+    <main class="views-stage" id="viewsStage" data-dir="forward">
+
+      <!-- ─────────── 页签一：拆图与修边 ─────────── -->
+      <div class="view-pane is-active" id="pane0" role="tabpanel" aria-label="拆图与修边">
+
+        <div class="section-cap" data-stagger="0">
+          <span class="section-cap-code">01 · EXTRACT</span>
+          <span class="section-cap-line" aria-hidden="true"></span>
+          <span class="section-cap-cn">选区拆出</span>
+        </div>
+
+        <!-- Hero 主操作卡：拆出部件 · 原层留待补选区 -->
+        <button type="button" class="inst-card inst-card--action inst-card--hero" id="btnSplitPatch" data-ui-action="splitAndPreparePatch" data-arg="2" data-spotlight="true" data-ripple="true" data-stagger="1">
+          <span class="inst-card-inner">
+            <span class="hero-row">
+              <span class="ic-badge ic-badge--hero c-cyan" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15.5 3.5H20.5V8.5" />
+                  <path d="M8.5 3.5H3.5V8.5" />
+                  <path d="M12 21v-7.8a4.2 4.2 0 0 0-1.23-2.97L3.8 3.8" />
+                  <path d="M14.8 9.2L20.2 3.8" />
+                  <circle cx="12" cy="20.2" r="1.2" fill="currentColor" stroke="none" />
+                </svg>
+              </span>
+              <span class="hero-copy">
+                <span class="hero-head">
+                  <span class="card-title card-title--hero">拆出部件 · 原层留待补选区</span>
+                  <span class="spec-pill">2px 咬合</span>
+                </span>
+                <span class="card-sub">拆至新层，同时切回原层挖空并保留 2px 咬合选区</span>
+              </span>
+              <span class="card-chevron" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </span>
+            </span>
+          </span>
+        </button>
+
+        <!-- 双列次级动作卡：多层合并同拆 | 剪贴链结构同拆 -->
+        <div class="card-grid-2" data-stagger="2">
+          <button type="button" class="inst-card inst-card--action inst-card--tile" id="btnMultiSplit" data-ui-action="splitMultiLayers" data-arg="merge" data-spotlight="true" data-ripple="true">
+            <span class="inst-card-inner">
+              <span class="tile-top">
+                <span class="ic-badge c-violet" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 3 2.5 7.8 12 12.6 21.5 7.8 12 3" fill="currentColor" fill-opacity="0.14" />
+                    <polyline points="2.5 12.4 12 17.2 21.5 12.4" />
+                    <polyline points="2.5 16.8 12 21.6 21.5 16.8" />
+                  </svg>
+                </span>
+                <span class="tile-code">MERGE</span>
+              </span>
+              <span class="tile-body">
+                <span class="card-title">多层合并同拆</span>
+                <span class="card-sub">线稿/上色层同选区合拆</span>
+              </span>
+            </span>
+          </button>
+
+          <button type="button" class="inst-card inst-card--action inst-card--tile" id="btnClipSplit" data-ui-action="splitClipChain" data-arg="preserve" data-spotlight="true" data-ripple="true">
+            <span class="inst-card-inner">
+              <span class="tile-top">
+                <span class="ic-badge c-emerald" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.2 13.8a4.6 4.6 0 0 0 6.9.45l2.6-2.6a4.6 4.6 0 0 0-6.5-6.5l-1.6 1.6" />
+                    <path d="M13.8 10.2a4.6 4.6 0 0 0-6.9-.45l-2.6 2.6a4.6 4.6 0 0 0 6.5 6.5l1.6-1.6" />
+                  </svg>
+                </span>
+                <span class="tile-code">CHAIN</span>
+              </span>
+              <span class="tile-body">
+                <span class="card-title">剪贴链结构同拆</span>
+                <span class="card-sub">连同基底与剪贴层提取</span>
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <div class="section-cap section-cap--spaced" data-stagger="3">
+          <span class="section-cap-code">02 · REFINE</span>
+          <span class="section-cap-line" aria-hidden="true"></span>
+          <span class="section-cap-cn">边缘精修</span>
+        </div>
+
+        <!-- 精密模块卡：轮廓内缩削毛边 + 1~6px 标尺滑块 + 动作栏 -->
+        <section class="inst-card inst-card--module" data-spotlight="true" data-stagger="3" aria-label="轮廓内缩削毛边">
+          <div class="inst-card-inner">
+            <div class="module-head">
+              <span class="ic-badge c-amber" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12.2 3.2a6.2 6.2 0 0 0 8.6 8.6A8.8 8.8 0 1 1 12.2 3.2z" fill="currentColor" fill-opacity="0.14" />
+                  <path d="M16.5 5.2l2.3 2.3" />
+                </svg>
+              </span>
+              <div class="module-head-copy">
+                <div class="card-title">轮廓内缩削毛边</div>
+                <div class="card-sub">向内收缩选区并削去外圈杂色白边</div>
+              </div>
+            </div>
+
+            <div class="ruler-slider" id="sliderShaveWrap" data-accent="amber" style="--slider-ratio: 0;">
+              <div class="ruler-meta">
+                <span class="ruler-label">内削深度</span>
+                <span class="val-pill" id="lblShavePx">1 px</span>
+              </div>
+              <div class="ruler-track-wrap">
+                <div class="ruler-groove" aria-hidden="true">
+                  <div class="ruler-fill"></div>
+                </div>
+                <input type="range" class="ruler-input" id="rngShavePx" min="1" max="6" step="1" value="1" aria-label="内削深度（像素）" />
+              </div>
+              <div class="ruler-ticks">
+                <span class="ruler-tick is-current" data-tick="1">1</span>
+                <span class="ruler-tick" data-tick="2">2</span>
+                <span class="ruler-tick" data-tick="3">3</span>
+                <span class="ruler-tick" data-tick="4">4</span>
+                <span class="ruler-tick" data-tick="5">5</span>
+                <span class="ruler-tick" data-tick="6">6</span>
+              </div>
+            </div>
+
+            <div class="module-actions">
+              <button type="button" class="tool-btn tool-btn--amber tool-btn--grow" id="btnShaveEdge" data-ui-action="shaveLayerEdge" data-ripple="true">
+                <svg class="tool-ic c-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="20 6.5 9.5 17 4.5 12" />
+                </svg>
+                <span>执行削毛边</span>
+              </button>
+              <button type="button" class="tool-btn tool-btn--danger-subtle" id="btnCleanEmpty" data-ui-action="cleanEmptyLayers" data-ripple="true" title="清理全透明空图层与空组">
+                <svg class="tool-ic c-coral" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="3.5 6.5 5.5 6.5 20.5 6.5" />
+                  <path d="M8.5 6.5V4.5a1.5 1.5 0 0 1 1.5-1.5h4a1.5 1.5 0 0 1 1.5 1.5v2" />
+                  <path d="M18.5 6.5v12.2a1.8 1.8 0 0 1-1.8 1.8H7.3a1.8 1.8 0 0 1-1.8-1.8V6.5" fill="currentColor" fill-opacity="0.1" />
+                </svg>
+                <span>清理空层</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ─────────── 页签二：补底与关节 ─────────── -->
+      <div class="view-pane" id="pane1" role="tabpanel" aria-label="补底与关节">
+
+        <div class="section-cap section-cap--tight" data-stagger="0">
+          <span class="section-cap-code">01 · OCCLUSION</span>
+          <span class="section-cap-line" aria-hidden="true"></span>
+          <span class="section-cap-cn">缺口封口</span>
+        </div>
+
+        <!-- 双列封口卡：缺口智能实色封口 | 周边色坍缩封口 -->
+        <div class="card-grid-2 card-grid-2--compact" data-stagger="0">
+          <button type="button" class="inst-card inst-card--action inst-card--tile-sm" id="btnPatchSolid" data-ui-action="patchOcclusionHole" data-arg="caf_solid" data-spotlight="true" data-ripple="true">
+            <span class="inst-card-inner">
+              <span class="tile-top">
+                <span class="ic-badge ic-badge--sm c-coral" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3l1.8 5.4a2.2 2.2 0 0 0 1.4 1.4L20.6 11.6l-5.4 1.8a2.2 2.2 0 0 0-1.4 1.4L12 20.2l-1.8-5.4a2.2 2.2 0 0 0-1.4-1.4L3.4 11.6l5.4-1.8a2.2 2.2 0 0 0 1.4-1.4z" fill="currentColor" fill-opacity="0.15" />
+                  </svg>
+                </span>
+                <span class="tile-code">SMART</span>
+              </span>
+              <span class="tile-body">
+                <span class="card-title">缺口智能实色封口</span>
+                <span class="card-sub">外扩 2px 咬合 · 无白缝虚边</span>
+              </span>
+            </span>
+          </button>
+
+          <button type="button" class="inst-card inst-card--action inst-card--tile-sm" id="btnPatchBleed" data-ui-action="patchOcclusionHole" data-arg="bleed" data-spotlight="true" data-ripple="true">
+            <span class="inst-card-inner">
+              <span class="tile-top">
+                <span class="ic-badge ic-badge--sm c-peach" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3.2l5.3 5.5a7.5 7.5 0 1 1-10.6 0z" fill="currentColor" fill-opacity="0.15" />
+                    <path d="M9.5 14.5a2.6 2.6 0 0 0 2.6 2.4" />
+                  </svg>
+                </span>
+                <span class="tile-code">BLEED</span>
+              </span>
+              <span class="tile-body">
+                <span class="card-title">周边色坍缩封口</span>
+                <span class="card-sub">沿缺口周边像素向内推拉填满</span>
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <!-- 紧凑双列建层条：垫入底层补关节 | 新建剪贴修补层 -->
+        <div class="card-grid-2 card-grid-2--compact" data-stagger="1">
+          <button type="button" class="inst-card inst-card--action inst-card--mini" id="btnLayerUnder" data-ui-action="createPatchLayer" data-arg="under" data-spotlight="true" data-ripple="true">
+            <span class="inst-card-inner">
+              <span class="mini-head">
+                <span class="ic-badge ic-badge--xs c-emerald" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="4.5" width="16" height="5.5" rx="1.5" stroke-opacity="0.48" />
+                    <rect x="4" y="14" width="16" height="5.5" rx="1.5" fill="currentColor" fill-opacity="0.16" />
+                    <line x1="12" y1="10" x2="12" y2="14" />
+                  </svg>
+                </span>
+                <span class="card-title">垫入底层补关节</span>
+              </span>
+              <span class="card-sub">在下方建层，手绘不脏原图</span>
+            </span>
+          </button>
+
+          <button type="button" class="inst-card inst-card--action inst-card--mini" id="btnLayerClipped" data-ui-action="createPatchLayer" data-arg="clipped" data-spotlight="true" data-ripple="true">
+            <span class="inst-card-inner">
+              <span class="mini-head">
+                <span class="ic-badge ic-badge--xs c-cyan" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="currentColor" fill-opacity="0.12" />
+                    <line x1="8.5" y1="12" x2="15.5" y2="12" />
+                    <line x1="12" y1="8.5" x2="12" y2="15.5" />
+                  </svg>
+                </span>
+                <span class="card-title">新建剪贴修补层</span>
+              </span>
+              <span class="card-sub">在上方建剪贴层，不画超边界</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="section-cap section-cap--tight section-cap--spaced-sm" data-stagger="2">
+          <span class="section-cap-code">02 · JOINT COMPASS</span>
+          <span class="section-cap-line" aria-hidden="true"></span>
+          <span class="section-cap-cn">关节延展</span>
+        </div>
+
+        <!-- 精密罗盘模块卡：92x92 5向空间罗盘 + 延展/参考环控制列 + 4~36px 刻度标尺滑块 -->
+        <section class="inst-card inst-card--module inst-card--compass" data-spotlight="true" data-stagger="2" aria-label="关节断口定向像素延展">
+          <div class="inst-card-inner">
+            <div class="compass-head">
+              <div class="compass-head-left">
+                <span class="ic-badge ic-badge--xs c-emerald" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="8.5" />
+                    <circle cx="12" cy="12" r="2.6" fill="currentColor" fill-opacity="0.24" />
+                  </svg>
+                </span>
+                <span class="card-title">关节断口定向像素延展</span>
+              </div>
+              <span class="dir-badge" id="badgeDir">向上 ↑</span>
+            </div>
+
+            <div class="compass-stage">
+              <!-- 92x92 凹陷式 5 向精密空间罗盘 -->
+              <div class="compass-dial" id="compassDial" data-dir="up" role="group" aria-label="关节延展方向选择">
+                <div class="compass-grid" aria-hidden="true"></div>
+                <div class="compass-beam" aria-hidden="true"></div>
+                <div class="compass-puck" aria-hidden="true"></div>
+
+                <button type="button" class="dir-chip is-active" data-dir="up" data-dir-label="向上 ↑" data-ripple="true" title="向上延展" aria-label="向上延展" aria-pressed="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="17 14.5 12 9.5 7 14.5" />
+                  </svg>
+                </button>
+                <button type="button" class="dir-chip" data-dir="down" data-dir-label="向下 ↓" data-ripple="true" title="向下延展" aria-label="向下延展" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="7 9.5 12 14.5 17 9.5" />
+                  </svg>
+                </button>
+                <button type="button" class="dir-chip" data-dir="left" data-dir-label="向左 ←" data-ripple="true" title="向左延展" aria-label="向左延展" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="14.5 17 9.5 12 14.5 7" />
+                  </svg>
+                </button>
+                <button type="button" class="dir-chip" data-dir="right" data-dir-label="向右 →" data-ripple="true" title="向右延展" aria-label="向右延展" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="9.5 17 14.5 12 9.5 7" />
+                  </svg>
+                </button>
+                <button type="button" class="dir-chip" data-dir="all" data-dir-label="全向 ✥" data-ripple="true" title="全方向四周延展" aria-label="全方向四周延展" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="2.6" fill="currentColor" fill-opacity="0.22" />
+                    <line x1="12" y1="3" x2="12" y2="6.2" />
+                    <line x1="12" y1="17.8" x2="12" y2="21" />
+                    <line x1="3" y1="12" x2="6.2" y2="12" />
+                    <line x1="17.8" y1="12" x2="21" y2="12" />
+                  </svg>
+                </button>
+              </div>
+
+              <!-- 右侧动作控制列 -->
+              <div class="compass-controls">
+                <div class="compass-hint">沿断口朝向推拉生成实色关节头</div>
+                <button type="button" class="tool-btn tool-btn--emerald tool-btn--block" id="btnJointExtend" data-ui-action="extendJointDirectional" data-ripple="true">
+                  <svg class="tool-ic c-emerald" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="6 11.5 12 5.5 18 11.5" />
+                    <line x1="12" y1="5.5" x2="12" y2="19" />
+                  </svg>
+                  <span>执行定向延展</span>
+                </button>
+                <button type="button" class="tool-btn tool-btn--arc tool-btn--block" id="btnArcGuide" data-ui-action="toggleJointArcGuide" data-arg="0" data-ripple="true" title="开关关节旋转参考圆环">
+                  <svg class="tool-ic c-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8.2" stroke-dasharray="3.2 2.4" />
+                    <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
+                  </svg>
+                  <span>旋转参考圆环</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="ruler-slider ruler-slider--compact" id="sliderJointWrap" data-accent="emerald" style="--slider-ratio: 0.25;">
+              <div class="ruler-meta">
+                <span class="ruler-label">延展距离</span>
+                <span class="val-pill" id="lblJointPx">12 px</span>
+              </div>
+              <div class="ruler-track-wrap">
+                <div class="ruler-groove" aria-hidden="true">
+                  <div class="ruler-fill"></div>
+                </div>
+                <input type="range" class="ruler-input" id="rngJointPx" min="4" max="36" step="1" value="12" aria-label="延展距离（像素）" />
+              </div>
+              <div class="ruler-ticks">
+                <span class="ruler-tick" data-tick="4">4</span>
+                <span class="ruler-tick is-current" data-tick="12">12</span>
+                <span class="ruler-tick" data-tick="20">20</span>
+                <span class="ruler-tick" data-tick="28">28</span>
+                <span class="ruler-tick" data-tick="36">36</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 底部找回条：从原稿找回框选区域像素 -->
+        <button type="button" class="inst-card inst-card--action inst-card--strip" id="btnRescue" data-ui-action="restoreFromBackup" data-arg="原稿找回" data-spotlight="true" data-ripple="true" data-stagger="3">
+          <span class="inst-card-inner">
+            <span class="strip-row">
+              <span class="ic-badge ic-badge--sm c-violet" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3.5 12a8.5 8.5 0 1 0 8.5-8.5 9 9 0 0 0-6.2 2.5L3.5 8.2" />
+                  <polyline points="3.5 3.5 3.5 8.2 8.2 8.2" />
+                </svg>
+              </span>
+              <span class="strip-copy">
+                <span class="card-title">从原稿找回框选区域像素</span>
+                <span class="card-sub">拆坏或补糊时，框选局部一键贴回原始像素</span>
+              </span>
+              <span class="card-chevron" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </span>
+            </span>
+          </span>
+        </button>
+
+      </div>
+
+    </main>
+
+    <!-- ==================== 5. 底部凹陷精密状态岛 ==================== -->
+    <footer class="status-island" id="logBox" role="status" aria-live="polite">
+      <span class="island-dot" id="islandDot" aria-hidden="true"></span>
+      <span class="island-text" id="logText">就绪 · 先点「备份原稿」，即可随时检测漏拆或执行拆补</span>
+    </footer>
+
+  </div>
+
+  <script src="./js/panel.js"></script>
+</body>
+</html>
