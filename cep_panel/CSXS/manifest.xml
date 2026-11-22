@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ExtensionManifest Version="7.0" ExtensionBundleId="com.spinesplitter.panel" ExtensionBundleVersion="1.0.0"
-                   ExtensionBundleName="SpineSplitter" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                   ExtensionBundleName="PS_Splitter" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
     <Extension Id="com.spinesplitter.panel.main" Version="1.0.0" />
   </ExtensionList>
@@ -31,7 +31,7 @@
         </Lifecycle>
         <UI>
           <Type>Panel</Type>
-          <Menu>SpineSplitter</Menu>
+          <Menu>PS_Splitter</Menu>
           <Geometry>
             <Size>
               <Height>640</Height>
