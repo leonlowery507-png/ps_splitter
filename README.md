@@ -1,6 +1,6 @@
 # PS_Splitter (`ps_splitter`) — Photoshop 角色拆图与补图工作台
 
-> **定位**：专为 Photoshop 2022+ 打造的可停靠 CEP 扩展面板与脚本工作台，深度聚焦原画**拆图**、**被遮挡缺口/关节补底**以及**多图层视图检视**三大痛点流程（纯 Photoshop 原生工作流，所有操作均包裹在单步历史记录事务中，按一次 `Ctrl + Z` 即可无损撤回）。
+> **定位**：专为 **Windows 版 Photoshop 2020 ~ 2025**（CC 2018~2019 基础兼容）打造的可停靠 CEP 扩展面板与脚本工作台，深度聚焦原画**拆图**、**被遮挡缺口/关节补底**以及**多图层视图检视**三大痛点流程（所有操作均包裹在单步历史记录事务中，按一次 `Ctrl + Z` 即可无损撤回）。
 
 ---
 
@@ -38,13 +38,13 @@
 
 ---
 
-## 二、Windows 一键安装（Photoshop 2022+）
+## 二、Windows 一键安装（Photoshop 2020 ~ 2025）
 
-1. 前往右侧 **[Releases](https://github.com/leonlowery507-png/ps_splitter/releases)** 下载最新版压缩包 `PS_Splitter_v1.0.0.zip` 并解压到本地任意英文路径；
-2. 打开解压目录中的 `scripts` 文件夹，双击运行 **`install_ps_scripts.bat`**（如写入 `Program Files` 受系统提示权限拦截，可右键「以管理员身份运行」）：
+1. 前往右侧 **[Releases](https://github.com/leonlowery507-png/ps_splitter/releases)** 下载最新版压缩包 `PS_Splitter_v1.0.0.zip` 并解压；
+2. 解压目录内**安装程序与精简说明同在根目录**：直接双击 **`一键安装_PS_Splitter.bat`**（详细精简说明见同目录 **`使用与安装说明.txt`**；若系统拦截 `Program Files` 写入，右键选择「以管理员身份运行」）：
    - 自动构建并安装可停靠 CEP 面板至 `%APPDATA%\Adobe\CEP\extensions\com.spinesplitter.panel`；
    - 自动写入注册表 `HKCU\Software\Adobe\CSXS.7~12` 的 `PlayerDebugMode=1`（确保面板正常加载）；
-   - 自动部署快捷入口至 Photoshop `Presets\Scripts\SpineSplitter\`；
+   - 自动匹配并部署快捷入口至电脑中安装的各版本 Photoshop `Presets\Scripts\SpineSplitter\`；
 3. **完全退出并重新打开 Photoshop**，点击顶部菜单：
    > **「窗口 (Window) > 扩展功能 (旧版) > PS_Splitter」**
 

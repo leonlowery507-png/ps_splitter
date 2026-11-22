@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ============================================================================
-echo   SpineSplitter - Photoshop Script Installer
+echo   PS_Splitter - Photoshop Script Installer
 echo ============================================================================
 echo.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install_ps_scripts.ps1" %*
