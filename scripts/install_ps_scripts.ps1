@@ -35,6 +35,7 @@ $bundleOrder = @(
   "host\ps_am.js",
   "host\ps_safety.js",
   "host\ps_split_joint_ops.js",
+  "host\ps_view_ops.js",
   "host\ps_naming_hierarchy_ops.js"
 )
 

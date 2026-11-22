@@ -697,6 +697,39 @@
       btn.setAttribute("aria-pressed", arcGuideActive ? "true" : "false");
     }
 
+    /**
+     * 同步多选独显激活态 (#btnIsolate.is-active)
+     */
+    function setIsolateActive(active) {
+      var btn = byId("btnIsolate");
+      if (!btn) return;
+      toggleClass(btn, "is-active", !!active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    }
+
+    /**
+     * 同步原稿前后对比激活态 (#btnBackupCompare.is-active)
+     */
+    function setBackupCompareActive(active) {
+      var btn = byId("btnBackupCompare");
+      if (!btn) return;
+      toggleClass(btn, "is-active", !!active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    }
+
+    /**
+     * 同步画布检视底色色块激活态 (.swatch-btn.is-active)
+     */
+    function setInspectBackdropMode(mode) {
+      var target = String(mode || "off").toLowerCase();
+      var btns = toArray(document.querySelectorAll(".swatch-btn[data-bg-mode]"));
+      for (var i = 0; i < btns.length; i++) {
+        var isMatch = btns[i].getAttribute("data-bg-mode") === target;
+        toggleClass(btns[i], "is-active", isMatch);
+        btns[i].setAttribute("aria-pressed", isMatch ? "true" : "false");
+      }
+    }
+
     return {
       spawnRipple: spawnRipple,
       isBusy: isBusy,
@@ -707,7 +740,10 @@
       setLog: setLog,
       syncBackupState: syncBackupState,
       setRadarActive: setRadarActive,
-      syncArcGuideState: syncArcGuideState
+      syncArcGuideState: syncArcGuideState,
+      setIsolateActive: setIsolateActive,
+      setBackupCompareActive: setBackupCompareActive,
+      setInspectBackdropMode: setInspectBackdropMode
     };
   })();
 
@@ -751,10 +787,11 @@
     }
 
     /**
-     * 页签切换：更新滑块位移、双向舞台方向、pane 激活与 Stagger 错峰入场
+     * 页签切换：更新滑块位移、多视图方向、pane 激活与 Stagger 错峰入场（支持 3 页签）
      */
     function switchMode(idx, silentInit) {
-      var nextIdx = parseInt(idx, 10) === 1 ? 1 : 0;
+      var parsedIdx = parseInt(idx, 10);
+      var nextIdx = (parsedIdx >= 0 && parsedIdx <= 2) ? parsedIdx : 0;
       var isChanging = nextIdx !== currentTabIdx;
       var dir = nextIdx >= currentTabIdx ? "forward" : "backward";
 
@@ -762,9 +799,7 @@
       var glider = byId("modeGlider");
       var stage = byId("viewsStage");
       var tabs = toArray(document.querySelectorAll(".nav-item"));
-      var pane0 = byId("pane0");
-      var pane1 = byId("pane1");
-      var panes = [pane0, pane1];
+      var panes = [byId("pane0"), byId("pane1"), byId("pane2")];
 
       if (track) {
         track.setAttribute("data-active-tab", String(nextIdx));
@@ -1031,6 +1066,9 @@
       groupCount: 3,
       radarActive: false,
       arcGuideActive: false,
+      isolateActive: false,
+      compareActive: false,
+      backdropMode: "off",
       splitSeq: 1
     };
 
@@ -1200,6 +1238,88 @@
         };
       }
 
+      if (action === "setSelectedVisibility") {
+        var showFlag = a1 !== "hide";
+        return {
+          ok: true,
+          message: showFlag
+            ? "已将选中的 3 个图层设为可见（并自动开启关联父组）。"
+            : "已隐藏选中的 3 个图层。"
+        };
+      }
+
+      if (action === "toggleIsolateSelected") {
+        mockState.isolateActive = !mockState.isolateActive;
+        return {
+          ok: true,
+          active: mockState.isolateActive,
+          message: mockState.isolateActive
+            ? "已独显选中的 2 个图层（再次点击即可还原原视图）。"
+            : "已还原独显前的全部图层显隐状态。"
+        };
+      }
+
+      if (action === "showAllWorkLayers") {
+        mockState.isolateActive = false;
+        mockState.compareActive = false;
+        return {
+          ok: true,
+          isolateCleared: true,
+          compareCleared: true,
+          message: "已开启全部 " + String(mockState.workArtLayers) + " 个工作图层（已自动跳过原稿备份组）。"
+        };
+      }
+
+      if (action === "setInspectBackdrop") {
+        var bgMode = String(a1 || "off").toLowerCase();
+        mockState.backdropMode = bgMode;
+        var bgNames = {
+          black: "纯黑（查白边）",
+          gray: "中灰（查明暗）",
+          green: "荧光绿（查透明虚洞）"
+        };
+        return {
+          ok: true,
+          mode: bgMode,
+          message: bgMode === "off"
+            ? "已关闭画布检视底色辅助层。"
+            : ("已切换为【" + (bgNames[bgMode] || bgMode) + "】检视底色，透明边与虚洞一目了然。")
+        };
+      }
+
+      if (action === "toggleBackupCompare") {
+        if (!mockState.hasBackup) {
+          return {
+            ok: false,
+            active: false,
+            message: "尚未建立原稿备份：请先点击顶部「备份原稿」，即可随时一键前后对比。"
+          };
+        }
+        mockState.compareActive = !mockState.compareActive;
+        return {
+          ok: true,
+          active: mockState.compareActive,
+          message: mockState.compareActive
+            ? "正在对比【原稿基准快照】（再次点击切回当前拆补图层）。"
+            : "已切回当前拆补视图。"
+        };
+      }
+
+      if (action === "locateActiveLayer") {
+        mockState.hasSelection = true;
+        return {
+          ok: true,
+          message: "已框选高亮「" + mockState.activeLayerName + "」（尺寸 312×428 px，坐标 X:540 Y:310）。"
+        };
+      }
+
+      if (action === "collapseAllGroups") {
+        return {
+          ok: true,
+          message: "已一键折叠图层面板中的所有图层组。"
+        };
+      }
+
       return {
         ok: false,
         message: "未知的面板指令: " + String(action)
@@ -1245,7 +1365,14 @@
     createPatchLayer: "正在创建手绘补画层…",
     extendJointDirectional: "正在延展关节断口像素…",
     toggleJointArcGuide: "正在切换关节旋转参考环…",
-    restoreFromBackup: "正在从原稿找回选区像素…"
+    restoreFromBackup: "正在从原稿找回选区像素…",
+    setSelectedVisibility: "正在批量切换选中图层显隐…",
+    toggleIsolateSelected: "正在切换多选独显视图…",
+    showAllWorkLayers: "正在开启全部工作图层…",
+    setInspectBackdrop: "正在切换画布检视底色…",
+    toggleBackupCompare: "正在切换原稿前后对比…",
+    locateActiveLayer: "正在定位高亮当前图层…",
+    collapseAllGroups: "正在折叠全部图层组…"
   };
 
   var pendingActionCount = 0;
@@ -1366,6 +1493,20 @@
     if (action === "extendJointDirectional") return byId("btnJointExtend");
     if (action === "toggleJointArcGuide") return byId("btnArcGuide");
     if (action === "restoreFromBackup") return byId("btnRescue");
+    if (action === "setSelectedVisibility") {
+      return arg === "hide" ? byId("btnSelHide") : byId("btnSelShow");
+    }
+    if (action === "toggleIsolateSelected") return byId("btnIsolate");
+    if (action === "showAllWorkLayers") return byId("btnShowAllWork");
+    if (action === "setInspectBackdrop") {
+      if (arg === "black") return byId("btnBgBlack");
+      if (arg === "gray") return byId("btnBgGray");
+      if (arg === "green") return byId("btnBgGreen");
+      return byId("btnBgOff");
+    }
+    if (action === "toggleBackupCompare") return byId("btnBackupCompare");
+    if (action === "locateActiveLayer") return byId("btnLocateLayer");
+    if (action === "collapseAllGroups") return byId("btnCollapseGroups");
     return null;
   }
 
@@ -1381,6 +1522,15 @@
       MotionFX.setRadarActive(false);
     } else if (action === "toggleJointArcGuide") {
       MotionFX.syncArcGuideState(res);
+    } else if (action === "toggleIsolateSelected") {
+      MotionFX.setIsolateActive(!!res.active);
+    } else if (action === "toggleBackupCompare") {
+      MotionFX.setBackupCompareActive(!!res.active);
+    } else if (action === "showAllWorkLayers") {
+      if (res.isolateCleared) MotionFX.setIsolateActive(false);
+      if (res.compareCleared) MotionFX.setBackupCompareActive(false);
+    } else if (action === "setInspectBackdrop") {
+      MotionFX.setInspectBackdropMode(res.mode || "off");
     }
   }
 
@@ -1492,6 +1642,34 @@
     }
     if (uiAction === "restoreFromBackup") {
       executeHostAction("restoreFromBackup", arg || "原稿找回", "", "", "", "", triggerEl);
+      return;
+    }
+    if (uiAction === "setSelectedVisibility") {
+      executeHostAction("setSelectedVisibility", arg || "show", "", "", "", "", triggerEl);
+      return;
+    }
+    if (uiAction === "toggleIsolateSelected") {
+      executeHostAction("toggleIsolateSelected", "", "", "", "", "", triggerEl);
+      return;
+    }
+    if (uiAction === "showAllWorkLayers") {
+      executeHostAction("showAllWorkLayers", "", "", "", "", "", triggerEl);
+      return;
+    }
+    if (uiAction === "setInspectBackdrop") {
+      executeHostAction("setInspectBackdrop", arg || "off", "", "", "", "", triggerEl);
+      return;
+    }
+    if (uiAction === "toggleBackupCompare") {
+      executeHostAction("toggleBackupCompare", "", "", "", "", "", triggerEl);
+      return;
+    }
+    if (uiAction === "locateActiveLayer") {
+      executeHostAction("locateActiveLayer", "", "", "", "", "", triggerEl);
+      return;
+    }
+    if (uiAction === "collapseAllGroups") {
+      executeHostAction("collapseAllGroups", "", "", "", "", "", triggerEl);
     }
   }
 
@@ -1763,7 +1941,8 @@
       var code = ev.keyCode || 0;
       if (key === "ArrowRight" || key === "ArrowLeft" || code === 39 || code === 37) {
         ev.preventDefault();
-        var nextTab = Controls.getCurrentTab() === 0 ? 1 : 0;
+        var step = (key === "ArrowRight" || code === 39) ? 1 : -1;
+        var nextTab = (Controls.getCurrentTab() + step + 3) % 3;
         Controls.switchMode(nextTab, false);
         var nextBtn = document.querySelector('.nav-item[data-tab-target="' + String(nextTab) + '"]');
         if (nextBtn && typeof nextBtn.focus === "function") {

@@ -20,6 +20,7 @@
 
   var RADAR_LAYER_NAME = "【漏拆高亮雷达_检查完即删】";
   var ARC_GUIDE_LAYER_NAME = "【关节旋转参考环_辅助】";
+  var INSPECT_BG_LAYER_NAME = "【视图检视底色_辅助】";
 
   function getPolyfill() {
     if (PSSplitter && PSSplitter.Core && PSSplitter.Core.Polyfill) {
@@ -305,7 +306,9 @@
               Safety.isInsideGroupByName(lyr, Safety.REF_GROUP_NAME)) {
             continue;
           }
-          if (String(lyr.name) === RADAR_LAYER_NAME || String(lyr.name) === ARC_GUIDE_LAYER_NAME) {
+          if (String(lyr.name) === RADAR_LAYER_NAME ||
+              String(lyr.name) === ARC_GUIDE_LAYER_NAME ||
+              String(lyr.name) === INSPECT_BG_LAYER_NAME) {
             continue;
           }
           if (Safety.isLayerSet(lyr)) {

@@ -64,7 +64,8 @@
         for (i = container.layers.length - 1; i >= 0; i--) {
           var lyr = container.layers[i];
           if (Safety.isInsideGroupByName(lyr, Safety.BACKUP_GROUP_NAME) ||
-              Safety.isInsideGroupByName(lyr, Safety.REF_GROUP_NAME)) {
+              Safety.isInsideGroupByName(lyr, Safety.REF_GROUP_NAME) ||
+              String(lyr.name) === "【视图检视底色_辅助】") {
             continue;
           }
           if (Safety.isLayerSet(lyr)) {
@@ -105,6 +106,7 @@
     var AM = PSSplitter.Host.AM;
     var Safety = PSSplitter.Host.Safety;
     var SplitOps = PSSplitter.Host.SplitJointOps;
+    var ViewOps = PSSplitter.Host.ViewOps;
 
     try {
       if (action === "getContext") {
@@ -227,6 +229,36 @@
         return P.jsonStringify(SplitOps.toggleJointArcGuide({
           radiusPx: isNaN(rad) ? 0 : rad
         }));
+      }
+
+      // 8. 图层视图与画布检视板块
+      if (action === "setSelectedVisibility") {
+        var visTarget = a1 !== "hide" && a1 !== "false" && a1 !== "0";
+        return P.jsonStringify(ViewOps.setSelectedVisibility(visTarget));
+      }
+
+      if (action === "toggleIsolateSelected") {
+        return P.jsonStringify(ViewOps.toggleIsolateSelected());
+      }
+
+      if (action === "showAllWorkLayers") {
+        return P.jsonStringify(ViewOps.showAllWorkLayers());
+      }
+
+      if (action === "setInspectBackdrop") {
+        return P.jsonStringify(ViewOps.setInspectBackdrop(a1 || "off"));
+      }
+
+      if (action === "toggleBackupCompare") {
+        return P.jsonStringify(ViewOps.toggleBackupCompare());
+      }
+
+      if (action === "locateActiveLayer") {
+        return P.jsonStringify(ViewOps.locateActiveLayer());
+      }
+
+      if (action === "collapseAllGroups") {
+        return P.jsonStringify(ViewOps.collapseAllGroups());
       }
 
       return P.jsonStringify({
