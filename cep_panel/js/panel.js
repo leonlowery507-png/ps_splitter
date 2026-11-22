@@ -712,24 +712,42 @@
   })();
 
   /* ==========================================================================
-   * 4. 丝滑交互编排层 (Controls: 分段页签 / 精密标尺滑块 / 5 向空间罗盘)
+   * 4. 丝滑交互编排层 (Controls: 分段页签 / 精密标尺滑块 / 360° 空间罗盘)
    * ========================================================================== */
 
   var Controls = (function () {
     var currentTabIdx = 0;
-    var currentCompassDir = "up";
+    var currentCompassAngle = 0;
+    var currentCompassDir = "angle:0";
     var staggerTimer = 0;
 
     var DIR_LABELS = {
-      up: "向上 ↑",
-      down: "向下 ↓",
-      left: "向左 ←",
-      right: "向右 →",
+      up: "0° ↑",
+      down: "180° ↓",
+      left: "270° ←",
+      right: "90° →",
       all: "全向 ✥"
     };
 
+    var COMPASS_ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"];
+
+    function normalizeAngle(deg) {
+      var n = Math.round(deg) % 360;
+      return n < 0 ? n + 360 : n;
+    }
+
+    function formatAngleLabel(deg) {
+      var n = normalizeAngle(deg);
+      var idx = Math.floor(((n + 22.5) % 360) / 45);
+      return String(n) + "° " + COMPASS_ARROWS[idx];
+    }
+
     function getCurrentDir() {
       return currentCompassDir;
+    }
+
+    function getCurrentAngle() {
+      return currentCompassAngle;
     }
 
     /**
@@ -866,14 +884,72 @@
       }
     }
 
+    function popDirBadge(badge) {
+      if (!badge || prefersReducedMotion) return;
+      var st = getElState(badge);
+      st.popTimer = clearTimer(st.popTimer);
+      removeClass(badge, "is-pop");
+      forceReflow(badge);
+      addClass(badge, "is-pop");
+      st.popTimer = setTimeout(function () {
+        st.popTimer = 0;
+        removeClass(badge, "is-pop");
+      }, 200);
+    }
+
     /**
-     * 5 向空间罗盘选择：同步 #compassDial[data-dir]、.dir-chip、#badgeDir 弹跳
+     * 360° 空间罗盘角度设置（0°=上，顺时针 0~359°）
+     */
+    function setCompassAngle(deg, silentInit) {
+      var n = normalizeAngle(deg);
+      var nextCode = "angle:" + String(n);
+      var changed = nextCode !== currentCompassDir;
+      currentCompassAngle = n;
+      currentCompassDir = nextCode;
+
+      var dial = byId("compassDial");
+      if (dial) {
+        dial.setAttribute("data-dir", "angle");
+        dial.setAttribute("data-angle", String(n));
+        dial.setAttribute("aria-valuenow", String(n));
+        dial.style.setProperty("--compass-angle", String(n) + "deg");
+      }
+
+      var btnAll = byId("btnDirAll");
+      if (btnAll) {
+        removeClass(btnAll, "is-active");
+        btnAll.setAttribute("aria-pressed", "false");
+      }
+
+      var badge = byId("badgeDir");
+      if (badge) {
+        badge.textContent = formatAngleLabel(n);
+        if (!silentInit && changed) {
+          popDirBadge(badge);
+        }
+      }
+    }
+
+    /**
+     * 空间罗盘方向选择：支持 "all"、方位枚举 ("up"|"right"|"down"|"left") 及 "angle:DEG"
      */
     function pickCompassDir(el, dirCode, dirLabel, silentInit) {
       var rawCode = dirCode || (el && el.getAttribute("data-dir")) || "all";
-      var code = DIR_LABELS.hasOwnProperty(rawCode) ? rawCode : "all";
-      var label = dirLabel || (el && el.getAttribute("data-dir-label")) || DIR_LABELS[code];
 
+      if (rawCode === "up") { setCompassAngle(0, silentInit); return; }
+      if (rawCode === "right") { setCompassAngle(90, silentInit); return; }
+      if (rawCode === "down") { setCompassAngle(180, silentInit); return; }
+      if (rawCode === "left") { setCompassAngle(270, silentInit); return; }
+      if (String(rawCode).indexOf("angle:") === 0) {
+        var parsedDeg = parseFloat(String(rawCode).substring(6));
+        if (!isNaN(parsedDeg)) {
+          setCompassAngle(parsedDeg, silentInit);
+          return;
+        }
+      }
+
+      var code = "all";
+      var label = dirLabel || (el && el.getAttribute("data-dir-label")) || DIR_LABELS.all;
       var changed = code !== currentCompassDir;
       currentCompassDir = code;
 
@@ -882,26 +958,17 @@
         dial.setAttribute("data-dir", code);
       }
 
-      var chips = toArray(document.querySelectorAll(".dir-chip"));
-      for (var i = 0; i < chips.length; i++) {
-        var isActive = chips[i].getAttribute("data-dir") === code;
-        toggleClass(chips[i], "is-active", isActive);
-        chips[i].setAttribute("aria-pressed", isActive ? "true" : "false");
+      var btnAll = byId("btnDirAll");
+      if (btnAll) {
+        addClass(btnAll, "is-active");
+        btnAll.setAttribute("aria-pressed", "true");
       }
 
       var badge = byId("badgeDir");
       if (badge) {
         badge.textContent = label;
-        if (!silentInit && changed && !prefersReducedMotion) {
-          var st = getElState(badge);
-          st.popTimer = clearTimer(st.popTimer);
-          removeClass(badge, "is-pop");
-          forceReflow(badge);
-          addClass(badge, "is-pop");
-          st.popTimer = setTimeout(function () {
-            st.popTimer = 0;
-            removeClass(badge, "is-pop");
-          }, 200);
+        if (!silentInit && changed) {
+          popDirBadge(badge);
         }
       }
     }
@@ -916,8 +983,13 @@
       syncJointSlider();
 
       var dial = byId("compassDial");
-      var initDir = (dial && dial.getAttribute("data-dir")) || "up";
-      pickCompassDir(null, initDir, null, true);
+      var initDir = (dial && dial.getAttribute("data-dir")) || "angle";
+      if (initDir === "all") {
+        pickCompassDir(null, "all", null, true);
+      } else {
+        var initAngle = dial ? parseFloat(dial.getAttribute("data-angle") || "0") : 0;
+        setCompassAngle(isNaN(initAngle) ? 0 : initAngle, true);
+      }
     }
 
     return {
@@ -927,8 +999,11 @@
       syncJointSlider: syncJointSlider,
       setSliderDragging: setSliderDragging,
       clearAllSliderDragging: clearAllSliderDragging,
+      setCompassAngle: setCompassAngle,
       pickCompassDir: pickCompassDir,
       getCurrentDir: getCurrentDir,
+      getCurrentAngle: getCurrentAngle,
+      formatAngleLabel: formatAngleLabel,
       getCurrentTab: function () { return currentTabIdx; }
     };
   })();
@@ -1089,6 +1164,12 @@
 
       if (action === "extendJointDirectional") {
         var dirLabel = DIR_CN[a2] || "全向";
+        if (a2 && String(a2).indexOf("angle:") === 0) {
+          var degVal = parseFloat(String(a2).substring(6));
+          if (!isNaN(degVal)) {
+            dirLabel = Controls.formatAngleLabel(degVal);
+          }
+        }
         return {
           ok: true,
           message: "已沿【" + dirLabel + "】延展补出 " + (a1 || "12") + "px 关节实色基底。"
@@ -1515,7 +1596,34 @@
    * ========================================================================== */
 
   function bindEventDelegation() {
-    /* 1. mousedown：触觉涟漪 + 滑块拖拽激活 */
+    var compassDragging = false;
+
+    function updateCompassFromPointer(ev, snap15) {
+      var dial = byId("compassDial");
+      if (!dial) return;
+      var rect = dial.getBoundingClientRect();
+      var cx = rect.left + rect.width * 0.5;
+      var cy = rect.top + rect.height * 0.5;
+      var dx = ev.clientX - cx;
+      var dy = ev.clientY - cy;
+      if (dx === 0 && dy === 0) return;
+      var deg = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+      if (snap15) {
+        deg = Math.round(deg / 15) * 15;
+      }
+      Controls.setCompassAngle(deg, true);
+    }
+
+    function stopCompassDrag() {
+      if (!compassDragging) return;
+      compassDragging = false;
+      var dial = byId("compassDial");
+      if (dial) {
+        removeClass(dial, "is-dragging");
+      }
+    }
+
+    /* 1. mousedown：触觉涟漪 + 滑块拖拽激活 + 360° 罗盘指针拖拽 */
     document.addEventListener("mousedown", function (ev) {
       if (ev.button !== 0) return;
 
@@ -1528,21 +1636,58 @@
         var sliderWrap = findClosestClass(ev.target, "ruler-slider");
         Controls.setSliderDragging(sliderWrap, true);
       }
+
+      var dialHit = findClosestAttr(ev.target, "id", "compassDial");
+      var onCenterChip = findClosestClass(ev.target, "dir-chip");
+      if (dialHit && !onCenterChip) {
+        compassDragging = true;
+        addClass(dialHit, "is-dragging");
+        updateCompassFromPointer(ev, !!ev.shiftKey);
+      }
     }, false);
 
-    /* 2. touchstart：触摸/数位笔滑块拖拽激活 */
+    document.addEventListener("mousemove", function (ev) {
+      if (!compassDragging) return;
+      updateCompassFromPointer(ev, !!ev.shiftKey);
+    }, false);
+
+    /* 2. touchstart：触摸/数位笔滑块与 360° 罗盘激活 */
     document.addEventListener("touchstart", function (ev) {
       if (ev.target && (ev.target.id === "rngShavePx" || ev.target.id === "rngJointPx")) {
         var sliderWrap = findClosestClass(ev.target, "ruler-slider");
         Controls.setSliderDragging(sliderWrap, true);
       }
+      var dialHit = findClosestAttr(ev.target, "id", "compassDial");
+      var onCenterChip = findClosestClass(ev.target, "dir-chip");
+      if (dialHit && !onCenterChip && ev.touches && ev.touches.length > 0) {
+        compassDragging = true;
+        addClass(dialHit, "is-dragging");
+        updateCompassFromPointer(ev.touches[0], false);
+      }
     }, false);
 
-    /* 3. 全局释放与失焦：确保滑块 .is-dragging 绝不残留 */
-    document.addEventListener("mouseup", Controls.clearAllSliderDragging, false);
-    document.addEventListener("touchend", Controls.clearAllSliderDragging, false);
-    document.addEventListener("touchcancel", Controls.clearAllSliderDragging, false);
-    window.addEventListener("blur", Controls.clearAllSliderDragging, false);
+    document.addEventListener("touchmove", function (ev) {
+      if (!compassDragging || !ev.touches || ev.touches.length === 0) return;
+      updateCompassFromPointer(ev.touches[0], false);
+    }, false);
+
+    /* 3. 全局释放与失焦：确保 .is-dragging 绝不残留 */
+    document.addEventListener("mouseup", function () {
+      Controls.clearAllSliderDragging();
+      stopCompassDrag();
+    }, false);
+    document.addEventListener("touchend", function () {
+      Controls.clearAllSliderDragging();
+      stopCompassDrag();
+    }, false);
+    document.addEventListener("touchcancel", function () {
+      Controls.clearAllSliderDragging();
+      stopCompassDrag();
+    }, false);
+    window.addEventListener("blur", function () {
+      Controls.clearAllSliderDragging();
+      stopCompassDrag();
+    }, false);
     document.addEventListener("blur", function (ev) {
       if (ev.target && (ev.target.id === "rngShavePx" || ev.target.id === "rngJointPx")) {
         var sliderWrap = findClosestClass(ev.target, "ruler-slider");
@@ -1563,7 +1708,7 @@
     document.addEventListener("input", handleSliderEvent, false);
     document.addEventListener("change", handleSliderEvent, false);
 
-    /* 5. click 统一委托：页签 / 5 向罗盘 / 标尺刻度快选 / 全部 16 个宿主动作 */
+    /* 5. click 统一委托：页签 / 中心全向切换 / 标尺刻度快选 / 全部 16 个宿主动作 */
     document.addEventListener("click", function (ev) {
       /* 5.1 页签切换 [data-tab-target] */
       var tabEl = findClosestAttr(ev.target, "data-tab-target");
@@ -1575,12 +1720,14 @@
         return;
       }
 
-      /* 5.2 5 向空间罗盘 [data-dir]（限定 .dir-chip 避免误触容器 #compassDial） */
+      /* 5.2 罗盘中心「全向」开关切换 */
       var dirChip = findClosestClass(ev.target, "dir-chip");
       if (dirChip) {
-        var dirCode = dirChip.getAttribute("data-dir");
-        var dirLabel = dirChip.getAttribute("data-dir-label");
-        Controls.pickCompassDir(dirChip, dirCode, dirLabel, false);
+        if (Controls.getCurrentDir() === "all") {
+          Controls.setCompassAngle(Controls.getCurrentAngle(), false);
+        } else {
+          Controls.pickCompassDir(dirChip, "all", dirChip.getAttribute("data-dir-label"), false);
+        }
         return;
       }
 

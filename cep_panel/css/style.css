@@ -1108,10 +1108,10 @@ body {
   position: relative;
   z-index: 1;
   font-size: 9.5px;
+  line-height: 1.38;
   margin-top: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
 }
 
 /* 底部找回条卡片 */
@@ -1538,10 +1538,17 @@ body {
   height: 92px;
   border-radius: 16px;
   background: radial-gradient(circle at 50% 50%, #111419 0%, #090a0c 100%);
-  border: 1px solid rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.065);
   box-shadow: var(--shadow-well);
   overflow: hidden;
   flex-shrink: 0;
+  cursor: crosshair;
+  touch-action: none;
+  transition: border-color 180ms var(--ease-out-expo);
+}
+
+.compass-dial.is-dragging {
+  border-color: rgba(110, 231, 183, 0.45);
 }
 
 /* 十字准星与同心参考环 */
@@ -1576,7 +1583,17 @@ body {
   background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 25%, rgba(255, 255, 255, 0.08) 75%, transparent 100%);
 }
 
-/* 旋转/扩散光学光束 */
+.compass-ring-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 360° 旋转/全向扩散光学光束 */
 .compass-beam {
   position: absolute;
   top: 0;
@@ -1585,24 +1602,12 @@ body {
   left: 0;
   pointer-events: none;
   background: radial-gradient(46px 52px at 50% 10%, rgba(110, 231, 183, 0.25) 0%, rgba(110, 231, 183, 0.05) 45%, transparent 74%);
-  transform: rotate(0deg) scale(1);
-  transition: transform 300ms var(--ease-out-expo), opacity 240ms var(--ease-out-expo), background 240ms var(--ease-out-expo);
+  transform: rotate(var(--compass-angle, 0deg)) scale(1);
+  transition: transform 220ms var(--ease-out-expo), opacity 220ms var(--ease-out-expo), background 220ms var(--ease-out-expo);
 }
 
-.compass-dial[data-dir="up"] .compass-beam {
-  transform: rotate(0deg) scale(1);
-}
-
-.compass-dial[data-dir="right"] .compass-beam {
-  transform: rotate(90deg) scale(1);
-}
-
-.compass-dial[data-dir="down"] .compass-beam {
-  transform: rotate(180deg) scale(1);
-}
-
-.compass-dial[data-dir="left"] .compass-beam {
-  transform: rotate(-90deg) scale(1);
+.compass-dial.is-dragging .compass-beam {
+  transition: none;
 }
 
 .compass-dial[data-dir="all"] .compass-beam {
@@ -1610,56 +1615,55 @@ body {
   transform: rotate(0deg) scale(1.06);
 }
 
-/* 弹性位移发光指示滑块 */
-.compass-puck {
+/* 360° 精密指针与发光端点旋钮 */
+.compass-needle {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 24px;
-  height: 24px;
-  margin-top: -12px;
-  margin-left: -12px;
-  border-radius: 7px;
-  background: rgba(110, 231, 183, 0.16);
-  border: 1px solid rgba(110, 231, 183, 0.56);
-  box-shadow: 0 0 12px rgba(110, 231, 183, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  width: 2px;
+  height: 34px;
+  margin-left: -1px;
+  margin-top: -34px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(110, 231, 183, 0.96) 0%, rgba(110, 231, 183, 0.14) 100%);
+  transform-origin: 50% 100%;
+  transform: rotate(var(--compass-angle, 0deg));
   pointer-events: none;
-  z-index: 1;
-  transform: translate3d(0, -28px, 0);
-  transition: transform 280ms var(--ease-compass), border-radius 220ms var(--ease-out-expo);
+  z-index: 2;
+  transition: transform 180ms var(--ease-out-expo), opacity 180ms var(--ease-out-expo);
 }
 
-.compass-dial[data-dir="up"] .compass-puck {
-  transform: translate3d(0, -28px, 0);
+.compass-dial.is-dragging .compass-needle {
+  transition: none;
 }
 
-.compass-dial[data-dir="down"] .compass-puck {
-  transform: translate3d(0, 28px, 0);
+.compass-dial[data-dir="all"] .compass-needle {
+  opacity: 0;
 }
 
-.compass-dial[data-dir="left"] .compass-puck {
-  transform: translate3d(-28px, 0, 0);
-}
-
-.compass-dial[data-dir="right"] .compass-puck {
-  transform: translate3d(28px, 0, 0);
-}
-
-.compass-dial[data-dir="all"] .compass-puck {
-  transform: translate3d(0, 0, 0);
+.compass-knob {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
   border-radius: 50%;
+  background: var(--accent-emerald);
+  border: 1.5px solid #0e0f11;
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.85);
 }
 
-/* 5 向方向按键（精确对齐 90x90 内框中心 45px ± 28px） */
+/* 中心全向切换按钮 */
 .dir-chip {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   width: 24px;
   height: 24px;
   padding: 0;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  background: rgba(14, 15, 17, 0.88);
   color: var(--text-muted);
   display: flex;
   align-items: center;
@@ -1667,14 +1671,15 @@ body {
   cursor: pointer;
   outline: none;
   overflow: hidden;
-  transition: color 180ms var(--ease-out-expo), background-color 180ms var(--ease-out-expo), transform 140ms var(--ease-out-expo);
+  transition: color 180ms var(--ease-out-expo), background-color 180ms var(--ease-out-expo), border-color 180ms var(--ease-out-expo), box-shadow 180ms var(--ease-out-expo), transform 140ms var(--ease-out-expo);
 }
 
-.dir-chip[data-dir="up"] { top: 5px; left: 33px; }
-.dir-chip[data-dir="down"] { top: 61px; left: 33px; }
-.dir-chip[data-dir="left"] { top: 33px; left: 5px; }
-.dir-chip[data-dir="right"] { top: 33px; left: 61px; }
-.dir-chip[data-dir="all"] { top: 33px; left: 33px; border-radius: 50%; }
+.dir-chip[data-dir="all"] {
+  top: 50%;
+  left: 50%;
+  margin-top: -12px;
+  margin-left: -12px;
+}
 
 .dir-chip svg {
   width: 12.5px;
@@ -1684,7 +1689,8 @@ body {
 
 .dir-chip:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(26, 29, 34, 0.94);
 }
 
 .dir-chip:active {
@@ -1693,10 +1699,13 @@ body {
 
 .dir-chip.is-active {
   color: var(--accent-emerald);
+  background: rgba(110, 231, 183, 0.16);
+  border-color: rgba(110, 231, 183, 0.56);
+  box-shadow: 0 0 12px rgba(110, 231, 183, 0.28);
 }
 
 .dir-chip.is-active:hover {
-  background: transparent;
+  background: rgba(110, 231, 183, 0.2);
 }
 
 .compass-controls {
@@ -1739,11 +1748,13 @@ body {
 
 .status-island {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex-shrink: 0;
-  height: 34px;
+  min-height: 34px;
+  max-height: 82px;
+  height: auto;
   margin-top: 8px;
-  padding: 0 11px;
+  padding: 8px 11px;
   border-radius: 9px;
   background: var(--bg-well);
   border: 1px solid rgba(255, 255, 255, 0.055);
@@ -1758,6 +1769,7 @@ body {
   position: relative;
   width: 6px;
   height: 6px;
+  margin-top: 4px;
   margin-right: 8px;
   border-radius: 50%;
   background: var(--accent-cyan);
@@ -1783,9 +1795,11 @@ body {
 .island-text {
   flex: 1;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.42;
+  max-height: 66px;
+  overflow-y: auto;
 }
 
 .island-text.is-updating {
@@ -2093,39 +2107,16 @@ body {
     padding: 9px 9px 9px 9px;
   }
 
-  /* 窄屏 5 向罗盘由 92×92 (±28px) 缩至 82×82 (±25px) */
+  /* 窄屏 360° 罗盘由 92×92 缩至 82×82 */
   .compass-dial {
     width: 82px;
     height: 82px;
     border-radius: 14px;
   }
 
-  .compass-puck {
-    width: 22px;
-    height: 22px;
-    margin-top: -11px;
-    margin-left: -11px;
-    transform: translate3d(0, -25px, 0);
-  }
-
-  .compass-dial[data-dir="up"] .compass-puck {
-    transform: translate3d(0, -25px, 0);
-  }
-
-  .compass-dial[data-dir="down"] .compass-puck {
-    transform: translate3d(0, 25px, 0);
-  }
-
-  .compass-dial[data-dir="left"] .compass-puck {
-    transform: translate3d(-25px, 0, 0);
-  }
-
-  .compass-dial[data-dir="right"] .compass-puck {
-    transform: translate3d(25px, 0, 0);
-  }
-
-  .compass-dial[data-dir="all"] .compass-puck {
-    transform: translate3d(0, 0, 0);
+  .compass-needle {
+    height: 29px;
+    margin-top: -29px;
   }
 
   .dir-chip {
@@ -2133,11 +2124,10 @@ body {
     height: 22px;
   }
 
-  .dir-chip[data-dir="up"] { top: 4px; left: 29px; }
-  .dir-chip[data-dir="down"] { top: 54px; left: 29px; }
-  .dir-chip[data-dir="left"] { top: 29px; left: 4px; }
-  .dir-chip[data-dir="right"] { top: 29px; left: 54px; }
-  .dir-chip[data-dir="all"] { top: 29px; left: 29px; }
+  .dir-chip[data-dir="all"] {
+    margin-top: -11px;
+    margin-left: -11px;
+  }
 
   .compass-controls {
     margin-left: 8px;
@@ -2154,9 +2144,24 @@ body {
   }
 
   .status-island {
-    height: 31px;
-    padding: 0 9px;
+    min-height: 31px;
+    height: auto;
+    padding: 6px 9px;
     font-size: 10px;
+  }
+}
+
+/* PS 停靠侧栏常见 305~328px 宽度：微调字号防孤字折行 */
+@media (max-width: 328px) {
+  .card-title--hero {
+    font-size: 11.5px;
+  }
+  .spec-pill {
+    padding: 1px 5px;
+    font-size: 8.5px;
+  }
+  .card-sub {
+    font-size: 9.5px;
   }
 }
 

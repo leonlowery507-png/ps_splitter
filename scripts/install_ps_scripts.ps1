@@ -140,6 +140,6 @@ foreach ($scriptsRoot in $targetDirs) {
 
 Write-Host "`n============================================================================" -ForegroundColor Green
 Write-Host "安装全部完成！请重启 Photoshop，然后点击顶部菜单：" -ForegroundColor Green
-Write-Host "  「窗口 (Window) > 扩展功能 (旧版) > SpineSplitter 拆图助手」" -ForegroundColor White
+Write-Host "  「窗口 (Window) > 扩展功能 (旧版) > SpineSplitter」" -ForegroundColor White
 Write-Host "即可打开可停靠在侧边栏的常驻拆图面板（边用套索画选区、边直接点击按钮拆图）！" -ForegroundColor Green
 Write-Host "============================================================================" -ForegroundColor Green

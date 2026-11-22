@@ -123,6 +123,50 @@
   }
 
   /**
+   * 恢复文档活动通道至复合彩色通道，防止 doc.channels.add() 自动切入 Alpha 通道导致后续剪切/填充报错
+   */
+  function restoreComponentChannels(doc, prevActiveChannels) {
+    if (!doc) {
+      return;
+    }
+    try {
+      if (doc.componentChannels && doc.componentChannels.length > 0) {
+        doc.activeChannels = doc.componentChannels;
+        return;
+      }
+    } catch (eComp) {}
+    try {
+      if (prevActiveChannels && prevActiveChannels.length > 0) {
+        doc.activeChannels = prevActiveChannels;
+      }
+    } catch (ePrev) {}
+  }
+
+  /**
+   * 安全创建临时 Alpha 通道并保存当前选区，随后立刻隐藏该通道并将活动通道切回复合彩色通道
+   */
+  function storeSelectionToTempChannel(doc, name) {
+    if (!doc || !doc.channels || typeof doc.channels.add !== "function" ||
+        !doc.selection || typeof doc.selection.store !== "function") {
+      return null;
+    }
+    var prevChannels = null;
+    try {
+      prevChannels = doc.activeChannels;
+    } catch (eGetCh) {}
+    var ch = doc.channels.add();
+    if (name) {
+      ch.name = name;
+    }
+    try {
+      ch.visible = false;
+    } catch (eVis) {}
+    doc.selection.store(ch);
+    restoreComponentChannels(doc, prevChannels);
+    return ch;
+  }
+
+  /**
    * 辅助：将指定 layerId 的不透明像素从当前选区中减去（ActionManager Sbtr）
    */
   function subtractLayerIdTransparencyFromSelection(layerId) {
@@ -386,6 +430,18 @@
         message: "请先在图层面板选中需要拆分的普通像素图层。"
       };
     }
+    if (sourceLayer.isBackgroundLayer) {
+      return {
+        ok: false,
+        message: "当前选中了锁定「背景」图层，无法直接挖空，请先双击转换为普通图层（或先执行「备份原稿」生成可编辑副本）。"
+      };
+    }
+    if (isNonRasterArtLayer(sourceLayer)) {
+      return {
+        ok: false,
+        message: "当前图层为智能对象/文字/形状层，请先右键「栅格化图层」后再拆出。"
+      };
+    }
 
     if (Safety.isInsideGroupByName(sourceLayer, Safety.BACKUP_GROUP_NAME) || Safety.isEffectivelyLocked(sourceLayer)) {
       return {
@@ -395,18 +451,21 @@
     }
 
     return Safety.runTransaction(doc, "SpineSplitter: 拆出部件并原位留待补选区", function () {
-      // 1. 将选区先存入临时通道以便挖空后在原图层恢复待补选区
-      var tmpChannel = null;
-      if (doc.channels && typeof doc.channels.add === "function" && doc.selection && typeof doc.selection.store === "function") {
-        tmpChannel = doc.channels.add();
-        tmpChannel.name = "__ps_splitter_patch_hole__";
-        doc.selection.store(tmpChannel);
-      }
+      // 1. 将选区先存入临时通道以便挖空后在原图层恢复待补选区（存完立刻切回复合通道）
+      var tmpChannel = storeSelectionToTempChannel(doc, "__ps_splitter_patch_hole__");
+      doc.activeLayer = sourceLayer;
 
       var newLayer = null;
       try {
         // 2. 执行通过剪切的图层 (CtTL)：自动把选区拆到新层并把原层对应位置挖空
-        AM.cutToLayer();
+        try {
+          AM.cutToLayer();
+        } catch (eCut) {
+          return {
+            ok: false,
+            message: "选区内当前图层无有效非透明像素（或图层不支持直接剪切：" + (eCut && eCut.message ? eCut.message : String(eCut)) + "）。"
+          };
+        }
         newLayer = doc.activeLayer;
         if (!newLayer || newLayer === sourceLayer || AM.isLayerEmpty(newLayer)) {
           if (newLayer && newLayer !== sourceLayer) {
@@ -428,6 +487,7 @@
         if (tmpChannel) {
           try { tmpChannel.remove(); } catch (eRmCh) {}
         }
+        restoreComponentChannels(doc);
       }
 
       return {
@@ -467,12 +527,7 @@
     }
 
     return Safety.runTransaction(doc, "SpineSplitter: 跨多层同选区联合拆出", function () {
-      var tmpCh = null;
-      if (doc.channels && typeof doc.channels.add === "function") {
-        tmpCh = doc.channels.add();
-        tmpCh.name = "__ps_splitter_multi_sel__";
-        doc.selection.store(tmpCh);
-      }
+      var tmpCh = storeSelectionToTempChannel(doc, "__ps_splitter_multi_sel__");
 
       var extractedIds = [];
       var extractedLayers = [];
@@ -502,6 +557,7 @@
         if (tmpCh) {
           try { tmpCh.remove(); } catch (eRm) {}
         }
+        restoreComponentChannels(doc);
       }
 
       if (extractedLayers.length === 0) {
@@ -549,6 +605,12 @@
     if (!activeLayer || Safety.isLayerSet(activeLayer)) {
       return { ok: false, message: "请先选中需要削去外圈毛边的普通像素图层。" };
     }
+    if (activeLayer.isBackgroundLayer) {
+      return { ok: false, message: "当前为「背景」图层（无透明边缘），无法执行轮廓内缩削毛边。" };
+    }
+    if (isNonRasterArtLayer(activeLayer)) {
+      return { ok: false, message: "当前图层为智能对象/文字/形状层，请先右键「栅格化图层」后再削毛边。" };
+    }
     if (Safety.isEffectivelyLocked(activeLayer) || Safety.isInsideGroupByName(activeLayer, Safety.BACKUP_GROUP_NAME)) {
       return { ok: false, message: "当前图层已锁定或位于原稿备份组内，无法修改像素。" };
     }
@@ -560,13 +622,22 @@
       var prevClipped = activeLayer.grouped === true;
 
       // 1. 载入当前图层的不透明像素选区
-      AM.loadLayerTransparencyAsSelection();
+      try {
+        AM.loadLayerTransparencyAsSelection();
+      } catch (eLoadSel) {
+        return { ok: false, message: "当前图层无可用透明轮廓选区（请确认图层为普通栅格像素层且非全透明）。" };
+      }
       if (!AM.hasSelection(doc)) {
         return { ok: false, message: "无法载入当前图层轮廓选区。" };
       }
 
       // 2. 向内真实收缩 shavePx 像素
-      AM.contractSelection(doc, shavePx);
+      try {
+        AM.contractSelection(doc, shavePx);
+      } catch (eContract) {
+        AM.deselect(doc);
+        return { ok: false, message: "当前选区无法继续向内收缩 " + String(shavePx) + "px（可能图层像素过细或铺满画布）。" };
+      }
 
       // 3. 若收缩后仍有选区，可选轻微羽化使边缘柔顺，随后反选并清除外圈 1~5px 毛边
       if (AM.hasSelection(doc)) {
@@ -579,8 +650,15 @@
             }
           } catch (eFeat) {}
         }
-        doc.selection.invert();
-        doc.selection.clear();
+        try {
+          doc.selection.invert();
+          if (AM.hasSelection(doc)) {
+            doc.selection.clear();
+          }
+        } catch (eClr) {
+          AM.deselect(doc);
+          return { ok: false, message: "清除外圈毛边时失败：请确认图层未锁定局部透明像素。" };
+        }
       }
       AM.deselect(doc);
 
@@ -637,13 +715,9 @@
         try { AM.expandSelection(doc, overlapPx); } catch (eExp) {}
       }
 
-      // 保存补洞选区
-      var holeCh = null;
-      if (doc.channels && typeof doc.channels.add === "function") {
-        holeCh = doc.channels.add();
-        holeCh.name = "__ps_splitter_hole_patch__";
-        doc.selection.store(holeCh);
-      }
+      // 保存补洞选区（存完立刻切回复合通道）
+      var holeCh = storeSelectionToTempChannel(doc, "__ps_splitter_hole_patch__");
+      doc.activeLayer = activeLayer;
 
       var usedCaf = false;
       try {
@@ -688,6 +762,7 @@
         if (holeCh) {
           try { holeCh.remove(); } catch (eRmCh) {}
         }
+        restoreComponentChannels(doc);
         AM.deselect(doc);
       }
 
@@ -750,28 +825,91 @@
   }
 
   /**
-   * 支持 5 方向（"up"|"down"|"left"|"right"|"all"）的渐进像素推拉延展
+   * 解析 360° 任意角度或方向枚举（"up"|"down"|"left"|"right"|"all"|"angle:135"|数字）
+   * 约定：0° = 正上方 (0, -1)，顺时针递增（90° = 右，180° = 下，270° = 左）
+   */
+  function parseJointDirection(direction) {
+    if (direction === undefined || direction === null || direction === "" || direction === "all") {
+      return { isAll: true, deg: 0, label: "全向 ✥" };
+    }
+    var deg = NaN;
+    if (typeof direction === "number") {
+      deg = direction;
+    } else {
+      var s = String(direction);
+      if (s === "up") {
+        deg = 0;
+      } else if (s === "right") {
+        deg = 90;
+      } else if (s === "down") {
+        deg = 180;
+      } else if (s === "left") {
+        deg = 270;
+      } else if (s.indexOf("angle:") === 0) {
+        deg = parseFloat(s.substring(6));
+      } else {
+        deg = parseFloat(s);
+      }
+    }
+    if (isNaN(deg)) {
+      return { isAll: true, deg: 0, label: "全向 ✥" };
+    }
+    deg = Math.round(deg) % 360;
+    if (deg < 0) {
+      deg += 360;
+    }
+    var arrows = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"];
+    var idx = Math.floor(((deg + 22.5) % 360) / 45);
+    return {
+      isAll: false,
+      deg: deg,
+      label: String(deg) + "° " + arrows[idx]
+    };
+  }
+
+  /**
+   * 支持 360° 任意角度与全向（"up"|"down"|"left"|"right"|"all"|"angle:DEG"）的渐进像素推拉延展
    */
   function runDirectionalBleed(doc, targetLayer, expandPx, direction) {
     var AM = getAM();
-    var dir = direction || "all";
+    var parsed = parseJointDirection(direction);
     var passes = expandPx <= 4 ? 1 : (expandPx <= 12 ? 2 : 3);
     var stepPx = Math.max(1, Math.round(expandPx / passes));
 
     var offsets;
-    if (dir === "up") {
-      offsets = [[0, -stepPx], [-Math.max(1, Math.round(stepPx * 0.4)), -stepPx], [Math.max(1, Math.round(stepPx * 0.4)), -stepPx]];
-    } else if (dir === "down") {
-      offsets = [[0, stepPx], [-Math.max(1, Math.round(stepPx * 0.4)), stepPx], [Math.max(1, Math.round(stepPx * 0.4)), stepPx]];
-    } else if (dir === "left") {
-      offsets = [[-stepPx, 0], [-stepPx, -Math.max(1, Math.round(stepPx * 0.4))], [-stepPx, Math.max(1, Math.round(stepPx * 0.4))]];
-    } else if (dir === "right") {
-      offsets = [[stepPx, 0], [stepPx, -Math.max(1, Math.round(stepPx * 0.4))], [stepPx, Math.max(1, Math.round(stepPx * 0.4))]];
-    } else {
+    if (parsed.isAll) {
       offsets = [
         [stepPx, 0], [-stepPx, 0], [0, stepPx], [0, -stepPx],
         [stepPx, stepPx], [-stepPx, stepPx], [stepPx, -stepPx], [-stepPx, -stepPx]
       ];
+    } else {
+      // 屏幕坐标系：0° 为正上方 (0, -1)，顺时针旋转
+      var rad = (parsed.deg - 90) * Math.PI / 180;
+      var ux = Math.cos(rad);
+      var uy = Math.sin(rad);
+      var px = -uy;
+      var py = ux;
+
+      var dx0 = Math.round(ux * stepPx);
+      var dy0 = Math.round(uy * stepPx);
+      if (dx0 === 0 && dy0 === 0) {
+        dx0 = Math.abs(ux) >= Math.abs(uy) ? (ux >= 0 ? 1 : -1) : 0;
+        dy0 = Math.abs(uy) > Math.abs(ux) ? (uy >= 0 ? 1 : -1) : 0;
+      }
+
+      // 主轴 + 左右 ±22° 扇形微扩，消除斜向推拉锯齿并保证实色无缝饱满
+      var dxL = Math.round((ux * 0.92 + px * 0.38) * stepPx);
+      var dyL = Math.round((uy * 0.92 + py * 0.38) * stepPx);
+      var dxR = Math.round((ux * 0.92 - px * 0.38) * stepPx);
+      var dyR = Math.round((uy * 0.92 - py * 0.38) * stepPx);
+
+      offsets = [[dx0, dy0]];
+      if ((dxL !== 0 || dyL !== 0) && (dxL !== dx0 || dyL !== dy0)) {
+        offsets.push([dxL, dyL]);
+      }
+      if ((dxR !== 0 || dyR !== 0) && (dxR !== dx0 || dyR !== dy0) && (dxR !== dxL || dyR !== dyL)) {
+        offsets.push([dxR, dyR]);
+      }
     }
 
     var origName = targetLayer.name;
@@ -1159,14 +1297,7 @@
       : "SpineSplitter: 剪贴链保留结构拆出";
 
     return Safety.runTransaction(doc, txTitle, function () {
-      var tmpChannel = null;
-      var hasChannelApi = doc.channels && typeof doc.channels.add === "function" &&
-        doc.selection && typeof doc.selection.store === "function";
-      if (hasChannelApi) {
-        tmpChannel = doc.channels.add();
-        tmpChannel.name = "__ps_splitter_tmp_sel__";
-        doc.selection.store(tmpChannel);
-      }
+      var tmpChannel = storeSelectionToTempChannel(doc, "__ps_splitter_tmp_sel__");
 
       var createdLayers = [];
       try {
@@ -1215,6 +1346,7 @@
         if (tmpChannel) {
           try { tmpChannel.remove(); } catch (eRmCh) {}
         }
+        restoreComponentChannels(doc);
       }
 
       if (createdLayers.length === 0) {
@@ -1531,8 +1663,8 @@
     state.lastJointMode = reqMode;
 
     var hasManualSel = AM.hasSelection(doc);
-    var dirLabels = { "up": "向上 ↑", "down": "向下 ↓", "left": "向左 ←", "right": "向右 →", "all": "全向 ✥" };
-    var title = "SpineSplitter: 关节断口延展 (" + (dirLabels[direction] || "全向") + " " + String(expandPx) + "px)";
+    var parsedDir = parseJointDirection(direction);
+    var title = "SpineSplitter: 关节断口延展 (" + parsedDir.label + " " + String(expandPx) + "px)";
 
     return Safety.runTransaction(doc, title, function () {
       var usedMode = reqMode;
@@ -1559,31 +1691,30 @@
         try {
           AM.loadLayerTransparencyAsSelection();
           AM.expandSelection(doc, expandPx);
-          var overlapChannel = null;
-          if (doc.channels && typeof doc.channels.add === "function") {
-            overlapChannel = doc.channels.add();
-            overlapChannel.name = "__ps_splitter_outer__";
-            doc.selection.store(overlapChannel);
+          var overlapChannel = storeSelectionToTempChannel(doc, "__ps_splitter_outer__");
+          if (overlapChannel) {
             try {
               AM.loadLayerTransparencyAsSelection();
               AM.contractSelection(doc, 2);
-              var innerChannel = doc.channels.add();
-              innerChannel.name = "__ps_splitter_inner__";
-              doc.selection.store(innerChannel);
+              var innerChannel = storeSelectionToTempChannel(doc, "__ps_splitter_inner__");
               try {
                 doc.selection.load(overlapChannel);
-                if (typeof SelectionType !== "undefined" && SelectionType.DIMINISH) {
+                if (innerChannel && typeof SelectionType !== "undefined" && SelectionType.DIMINISH) {
                   doc.selection.load(innerChannel, SelectionType.DIMINISH);
                 }
               } finally {
-                innerChannel.remove();
+                if (innerChannel) {
+                  try { innerChannel.remove(); } catch (eRmIn) {}
+                }
               }
             } finally {
-              overlapChannel.remove();
+              try { overlapChannel.remove(); } catch (eRmOv) {}
+              restoreComponentChannels(doc);
             }
           } else {
             AM.subtractLayerTransparencyFromSelection();
           }
+          doc.activeLayer = activeLayer;
           AM.contentAwareFill();
           AM.deselect(doc);
           return {
@@ -1593,6 +1724,7 @@
             message: "已完成图层边缘 " + String(expandPx) + "px 关节内容识别扩边补全（CAF）。"
           };
         } catch (eAutoCaf) {
+          restoreComponentChannels(doc);
           AM.deselect(doc);
           usedMode = "bleed";
           fallbackNote = "（已自动切换为像素推拉延展补底）";
@@ -1600,11 +1732,12 @@
       }
 
       var maskChannel = null;
-      if (hasManualSel && doc.channels && typeof doc.channels.add === "function") {
-        maskChannel = doc.channels.add();
-        maskChannel.name = "__ps_splitter_joint_clip__";
-        doc.selection.store(maskChannel);
-        AM.deselect(doc);
+      if (hasManualSel) {
+        maskChannel = storeSelectionToTempChannel(doc, "__ps_splitter_joint_clip__");
+        if (maskChannel) {
+          AM.deselect(doc);
+          doc.activeLayer = activeLayer;
+        }
       }
 
       try {
@@ -1628,6 +1761,7 @@
         if (maskChannel) {
           try { maskChannel.remove(); } catch (eRmMask) {}
         }
+        restoreComponentChannels(doc);
       }
 
       return {
@@ -1635,7 +1769,7 @@
         usedMode: "bleed",
         expandPx: expandPx,
         direction: direction,
-        message: "已沿【" + (dirLabels[direction] || "全向") + "】延展补出 " + String(expandPx) + "px 关节实色基底" + fallbackNote + "。"
+        message: "已沿【" + parsedDir.label + "】延展补出 " + String(expandPx) + "px 关节实色基底" + fallbackNote + "。"
       };
     });
   }
@@ -1684,12 +1818,8 @@
           AM.removeWhiteMatte();
         } else if (mode === "alphaBleed") {
           AM.loadLayerTransparencyAsSelection();
-          var alphaCh = null;
-          if (doc.channels && typeof doc.channels.add === "function") {
-            alphaCh = doc.channels.add();
-            alphaCh.name = "__ps_splitter_alpha_bleed__";
-            doc.selection.store(alphaCh);
-          }
+          var alphaCh = storeSelectionToTempChannel(doc, "__ps_splitter_alpha_bleed__");
+          doc.activeLayer = lyr;
           AM.deselect(doc);
           try {
             runDirectionalBleed(doc, lyr, Math.max(1, Math.min(widthPx, 4)), "all");
@@ -1703,6 +1833,7 @@
             if (alphaCh) {
               try { alphaCh.remove(); } catch (eRmAlpha) {}
             }
+            restoreComponentChannels(doc);
           }
         } else {
           // 增强去边：先执行原生 Defringe，再配合 1px 极细羽化内削保证肉眼一定生效
